@@ -34,13 +34,15 @@ You just need to modify some company-specific details in the Servidor.py file an
 ### Images (Reminder: everything is still in progress):
 
 <p align="left">
-![](https://imgur.com/Nj9Z2V0.png)
+<img src="https://imgur.com/Nj9Z2V0.png" width=30% height=50% style="margin-right: 10px;">
 
-![](https://imgur.com/zt1FlRU.png)
+<img src="https://imgur.com/zt1FlRU.png" width=30% height=50% style="margin-right: 10px;">
 
-![](https://imgur.com/WtDIBaz.png)
+<img src="https://imgur.com/WtDIBaz.png" width=30% height=50%>
 </p>
-All images available at: https://imgur.com/a/Gjoq6dO
+
+All images available at:
+[Click here](https://imgur.com/a/Gjoq6dO)
 
 
 ## License
