@@ -820,5 +820,5 @@ def buscar_productos():
 
 
 if __name__ == "__main__":
-	app.run(host='0.0.0.0', port=5000, debug=True) #Para testing
-	#serve(app, host='0.0.0.0', port=5000) #Para produccion
+	#app.run(host='0.0.0.0', port=5000, debug=True) #Para testing
+	serve(app, host='0.0.0.0', port=5000) #Para produccion
