@@ -35,8 +35,8 @@ def CrearLogs(self):
 
 # ------- DATOS PARA AFIP -------
 URL_QR = "https://www.afip.gob.ar/fe/qr/"
-
-CUIT = 30670206528
+#30670206528
+CUIT = 20218452788
 
 cert_dir = resource_path("Certificados")
 
@@ -44,18 +44,23 @@ WSAa = WSAA()
 WSFEv1 = WSFEv1()
 
 
-CRT = cert_dir + '\\productioncrt.crt'
-KEY = cert_dir + '\\privada.key'
+#CRT = cert_dir + '\\productioncrt.crt'
+#KEY = cert_dir + '\\privada.key'
 
+CRT = cert_dir + '\\empresa.crt'
+KEY = cert_dir + '\\privadatesting.key'
 
 WSFEv1.Cuit = CUIT
 
-WSFEv1.WSDL = "https://servicios1.afip.gov.ar/wsfev1/service.asmx?WSDL"
+#WSFEv1.WSDL = "https://servicios1.afip.gov.ar/wsfev1/service.asmx?WSDL"
 
+WSFEv1.WSDL = "https://wswhomo.afip.gov.ar/wsfev1/service.asmx?WSDL"
 
-WSAa.WSDL = "https://wsaa.afip.gov.ar/ws/services/LoginCms?wsdl"
-WSAa.WSAAURL = "https://wsaa.afip.gov.ar/ws/services/LoginCms"
+#WSAa.WSDL = "https://wsaa.afip.gov.ar/ws/services/LoginCms?wsdl"
+#WSAa.WSAAURL = "https://wsaa.afip.gov.ar/ws/services/LoginCms"
 
+WSAa.WSDL = "https://wsaahomo.afip.gov.ar/ws/services/LoginCms?wsdl"
+WSAa.WSAAURL = "https://wsaahomo.afip.gov.ar/ws/services/LoginCms"
 
 try:
 	DATE = datetime.now().strftime("%Y%m%d")
@@ -68,10 +73,10 @@ def conectar_servidor():
 	while True:
 		try:
 			connection = mysql.connector.connect(
-				host='127.0.0.1',
+				host='192.168.0.142',
 				port=3306,
-				user='root',
-				password='1234',
+				user='ventas',
+				password='ventas',
 				database='negocio',
 				connection_timeout=5,
 			)

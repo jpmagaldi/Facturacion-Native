@@ -17,7 +17,7 @@ export default function Ranking({ navigation, route }) {
     const [fecha, setFecha] = useState(new Date());
     const [importeVentas, setImporteVentas] = useState('Cargando..');
     const usePtoventa = useStore.getString('usePtoventa')
-    const [ImporteColor, setImporteColor] = useState('#FF9800');
+    const [ImporteColor, setImporteColor] = useState('#d37f00');
     const [rankingData, setRankingData] = useState([]);
     const [loading, setLoading] = useState(false);
 
