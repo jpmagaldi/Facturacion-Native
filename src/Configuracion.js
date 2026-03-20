@@ -111,21 +111,73 @@ export default function Configuracion({ navigation, route }) {
         setExpanded(!expanded);
     }
 
-    const Alerta = () => (
-        <View>
+    const Alerta = () => {
+        const isSuccess = titulo.toLowerCase().includes('exito') || titulo.toLowerCase().includes('éxito');
+        //lo dejo expresado por si en algun momento es necesario un aviso
+        //const isWarning = titulo.toLowerCase().includes('cae') || titulo.toLowerCase().includes('aviso');
+        
+        let headerColor = '#BD1C10'; // Default a Rojo de Error
+        let bgColor = '#FFEBEE';
+        let iconName = 'alert-circle-outline';
+
+        if (isSuccess) {
+            headerColor = '#4CAF50';
+            bgColor = '#E8F5E9';
+            iconName = 'check-circle-outline';
+        } /*else if (isWarning) {
+            headerColor = '#FF9800';
+            bgColor = '#FFF3E0';
+            iconName = 'alert-outline';
+        }*/
+
+        return (
             <Portal>
-                <Dialog visible={visible} onDismiss={() => setVisible(false)}>
-                    <Dialog.Title>{titulo}</Dialog.Title>
+                <Dialog 
+                    visible={visible} 
+                    onDismiss={() => setVisible(false)}
+                    style={{ borderRadius: 28, backgroundColor: '#fff', overflow: 'hidden' }}
+                >
+                    {/* Línea decorativa superior */}
+                    <View style={{ backgroundColor: headerColor, height: 6 }} />
+                    
+                    <View style={{ alignItems: 'center', marginTop: 24 }}>
+                        <View style={{ 
+                            backgroundColor: bgColor, 
+                            width: 72, 
+                            height: 72, 
+                            borderRadius: 36, 
+                            justifyContent: 'center', 
+                            alignItems: 'center' 
+                        }}>
+                            <Icon source={iconName} color={headerColor} size={40} />
+                        </View>
+                    </View>
+
+                    <Dialog.Title style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 22, paddingTop: 16 }}>
+                        {titulo}
+                    </Dialog.Title>
+
                     <Dialog.Content>
-                        <Text variant="bodyMedium">{texto}</Text>
+                        <Text variant="bodyLarge" style={{ textAlign: 'center', color: '#555', lineHeight: 24 }}>
+                            {texto}
+                        </Text>
                     </Dialog.Content>
-                    <Dialog.Actions>
-                        <Button onPress={() => setVisible(false)}>Aceptar</Button>
+
+                    <Dialog.Actions style={{ flexDirection: 'column', paddingHorizontal: 20, paddingBottom: 20 }}>
+                        <Button 
+                            mode="contained" 
+                            onPress={() => setVisible(false)}
+                            style={{ width: '100%', borderRadius: 12, backgroundColor: headerColor }}
+                            contentStyle={{ height: 48 }}
+                            labelStyle={{ fontSize: 16, fontWeight: 'bold' }}
+                        >
+                            Aceptar
+                        </Button>
                     </Dialog.Actions>
                 </Dialog>
             </Portal>
-        </View>
-    )
+        );
+    }
 
     useEffect(() => {
         const Permisos = async () => {
@@ -220,21 +272,24 @@ const connectPrinter = async () => {
 
 const SyncClientes = async () => {
     try {
-        const e = await apiClient.get(`/buscarCliente`)
-        await useStore.setArrayAsync('useCli', e.data);
-        setTitulo('Correcto.')
-        setTexto('Se sincronizó correctamente.')
-    } catch (error) {
-        console.log(error)
-        if (error.response) {
-            setTitulo('Error del servidor')
-            setTexto(typeof error.response.data === 'string' ? error.response.data : JSON.stringify(error.response.data))
-        } else if (error.request) {
-            setTitulo('No hay respuesta del servidor')
-            setTexto('Puede ser que no este conectado el servidor o la ip haya cambiado')
+        const response = await apiClient.get(`/buscarCliente`)
+        if (response.data.error === null) {
+            await useStore.setArrayAsync('useCli', response.data.arr);
+            setTitulo('¡Exito!')
+            setTexto('Se sincronizó correctamente')
         } else {
             setTitulo('Error')
-            setTexto(error.message || 'Error desconocido')
+            setTexto(response.data.error)
+        }
+    } catch (error) {
+        console.log(error)
+        setTitulo('Error')
+        if (error.code === "ERR_NETWORK") {
+            setTexto('No se pudo conectar con el servidor, verifique su conexión a internet')
+        } else if (error.code === "ERR_BAD_RESPONSE") {
+            setTexto("Error interno del servidor\n" + error);
+        } else if (error.request) {
+            setTexto("No hubo respuesta del servidor");
         }
     }
     setVisible(true)
@@ -242,24 +297,26 @@ const SyncClientes = async () => {
 
 const SyncProductos = async () => {
     try {
-        const e = await apiClient.get(`/buscarProductos`)
-        await useStore.setArrayAsync('useProd', e.data);
+        const response = await apiClient.get(`/buscarProductos`)
+        if (response.data.error === null) {
+            await useStore.setArrayAsync('useProd', response.data.arr);
 
-        const valoresUnicos = [...new Set(e.data.map(subArray => subArray[1]))];
-        await useStore.setArrayAsync('useList', valoresUnicos);
-
-        setTitulo('Correcto.')
-        setTexto('Se sincronizó correctamente.')
-    } catch (error) {
-        if (error.response) {
-            setTitulo('Error del servidor')
-            setTexto(typeof error.response.data === 'string' ? error.response.data : JSON.stringify(error.response.data))
-        } else if (error.request) {
-            setTitulo('No hay respuesta del servidor')
-            setTexto('Puede ser que no este conectado el servidor o la ip haya cambiado')
+            const valoresUnicos = [...new Set(response.data.arr.map(subArray => subArray[1]))];
+            await useStore.setArrayAsync('useList', valoresUnicos);
+            setTitulo('¡Exito!')
+            setTexto('Se sincronizó correctamente')
         } else {
             setTitulo('Error')
-            setTexto(error.message || 'Error desconocido')
+            setTexto(response.data.error)
+        }
+    } catch (error) {
+        setTitulo('Error')
+        if (error.code === "ERR_NETWORK") {
+            setTexto('No se pudo conectar con el servidor, verifique su conexión a internet')
+        } else if (error.code === "ERR_BAD_RESPONSE") {
+            setTexto("Error interno del servidor\n" + error);
+        } else if (error.request) {
+            setTexto("No hubo respuesta del servidor");
         }
     }
     setVisible(true)
@@ -271,12 +328,12 @@ const Guardar = async () => {
         await useStore.setStringAsync('usePtoventa', usePtoventa);
         await changeBaseURL()
         VerificarConexion();
-        setTitulo('Correcto.')
-        setTexto('Se guardó correctamente.')
+        setTitulo('¡Exito!')
+        setTexto('Se guardó correctamente')
 
     } catch (e) {
         setTitulo('Error')
-        setTexto(String(e))
+        setTexto('Error interno: ' + String(e))
     }
     setVisible(true)
 }
@@ -400,12 +457,10 @@ const UltimoFactura = async () => {
 
 const ListaPrecios = async (aux) => {
     try {
-        const e = await apiClient.post(`/listaPrecios`,
-                {
-                    lista: aux
-                })
-        if (e.data.length !== 0) {
-            let arr = e.data
+        const response = await apiClient.post(`/listaPrecios`, {lista: aux })
+        
+        if (response.data.error === null) {
+            let arr = response.data.arr
             let waitTime = 1
             
             Promise.all([
@@ -419,14 +474,23 @@ const ListaPrecios = async (aux) => {
                 }),
                 asyncPrintBill(`${CENTER}${COMMANDS.HORIZONTAL_LINE.HR3_80MM}`, waitTime++),
             ])
-                
-
         } else {
-            setTitulo('No hay respuesta del servidor')
-            setTexto('Puede ser que no este conectado el servidor o la ip haya cambiado')
+            setTitulo('Error')
+            setTexto('Error interno.')
+            setVisible(true)
+            return
         }
     } catch (error) {
-        console.log(error)
+        setTitulo('Error')
+        if (error.code === "ERR_NETWORK") {
+            setTexto('No se pudo conectar con el servidor, verifique su conexión a internet')
+        } else if (error.code === "ERR_BAD_RESPONSE") {
+            setTexto("Error interno del servidor\n" + error);
+        } else if (error.request) {
+            setTexto("No hubo respuesta del servidor");
+        }
+        setVisible(true)
+        return
     }
 }
 

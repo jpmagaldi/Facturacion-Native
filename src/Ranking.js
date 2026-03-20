@@ -15,13 +15,10 @@ import { useStore, apiClient } from './store'
 
 export default function Ranking({ navigation, route }) {
     const [fecha, setFecha] = useState(new Date());
-    const [importeVentas, setImporteVentas] = useState('ERROR');
-    const [usePtoventa, setPtoventa] = useState(useStore.getString('usePtoventa'))
-    const [ImporteColor, setImporteColor] = useState('#8B0000');
-    
-
+    const [importeVentas, setImporteVentas] = useState('Cargando..');
+    const usePtoventa = useStore.getString('usePtoventa')
+    const [ImporteColor, setImporteColor] = useState('#FF9800');
     const [rankingData, setRankingData] = useState([]);
-
     const [loading, setLoading] = useState(false);
 
     useFocusEffect(
@@ -33,12 +30,11 @@ export default function Ranking({ navigation, route }) {
     const BuscarInfo = async () => {
         setLoading(true)
         try {
-            const currentPtoVta = useStore.getString('usePtoventa');
             let response = await apiClient.post(`rankingFact`, {
                 Fecha: fecha.toISOString().slice(0, 10),
-                PtoVta: currentPtoVta,
+                PtoVta: usePtoventa,
             })
-            if (response.data != []) {
+            if (response.data.error === null) {
                 const combined = [
                     ...(response.data.rowF || []).map(item => ({
                         tipo: item.Comprobante,
@@ -53,9 +49,8 @@ export default function Ranking({ navigation, route }) {
                         total: item.Total
                     }))
                 ];
-                
                 setRankingData(combined);
-                if (response.data.total !== 'NO') {
+                if (response.data.total !== '0.00') {
                     const formattedTotal = parseFloat(response.data.total).toLocaleString('es-AR', { 
                         minimumFractionDigits: 2, 
                         maximumFractionDigits: 2 
@@ -63,21 +58,22 @@ export default function Ranking({ navigation, route }) {
                     setImporteVentas(`${formattedTotal}`);
                     setImporteColor('#43a047');
                 } else {
-                    setImporteVentas('ERROR');
-                    setImporteColor('#8B0000');
+                    setImporteVentas('0.00');
+                    setImporteColor('#43a047');
                 }
-            } else {
-                setImporteVentas('NO HAY DATOS');
+            } 
+            else {
+                setImporteVentas(response.data.error);
                 setImporteColor('#8B0000');
             }
             setLoading(false)
         } catch (e) {
-            setImporteVentas('NO HAY DATOS');
+            setImporteVentas('ERROR INTERNO');
             setImporteColor('#8B0000');
             console.error(e);
         }
     }
-
+    
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContent}>

@@ -435,120 +435,216 @@ export default function Facturacion({ navigation, route }) {
         </Surface>
     )
 
-    const Alerta = () => (
-        <View>
+    const Alerta = () => {
+        const isSuccess = titulo.toLowerCase().includes('exito') || titulo.toLowerCase().includes('éxito');
+        //lo dejo expresado por si en algun momento es necesario un aviso
+        //const isWarning = titulo.toLowerCase().includes('cae') || titulo.toLowerCase().includes('aviso');
+        
+        let headerColor = '#BD1C10'; // Default a Rojo de Error
+        let bgColor = '#FFEBEE';
+        let iconName = 'alert-circle-outline';
+
+        if (isSuccess) {
+            headerColor = '#4CAF50';
+            bgColor = '#E8F5E9';
+            iconName = 'check-circle-outline';
+        } /*else if (isWarning) {
+            headerColor = '#FF9800';
+            bgColor = '#FFF3E0';
+            iconName = 'alert-outline';
+        }*/
+
+        return (
             <Portal>
-                <Dialog visible={visible} onDismiss={() => setVisible(false)}>
-                    <Dialog.Title>{titulo}</Dialog.Title>
+                <Dialog 
+                    visible={visible} 
+                    onDismiss={() => setVisible(false)}
+                    style={{ borderRadius: 28, backgroundColor: '#fff', overflow: 'hidden' }}
+                >
+                    {/* Línea decorativa superior */}
+                    <View style={{ backgroundColor: headerColor, height: 6 }} />
+                    
+                    <View style={{ alignItems: 'center', marginTop: 24 }}>
+                        <View style={{ 
+                            backgroundColor: bgColor, 
+                            width: 72, 
+                            height: 72, 
+                            borderRadius: 36, 
+                            justifyContent: 'center', 
+                            alignItems: 'center' 
+                        }}>
+                            <Icon source={iconName} color={headerColor} size={40} />
+                        </View>
+                    </View>
+
+                    <Dialog.Title style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 22, paddingTop: 16 }}>
+                        {titulo}
+                    </Dialog.Title>
+
                     <Dialog.Content>
-                        <Text variant="bodyMedium">{texto}</Text>
+                        <Text variant="bodyLarge" style={{ textAlign: 'center', color: '#555', lineHeight: 24 }}>
+                            {texto}
+                        </Text>
                     </Dialog.Content>
-                    <Dialog.Actions>
-                        <Button onPress={() => setVisible(false)}>Aceptar</Button>
+
+                    <Dialog.Actions style={{ flexDirection: 'column', paddingHorizontal: 20, paddingBottom: 20 }}>
+                        <Button 
+                            mode="contained" 
+                            onPress={() => setVisible(false)}
+                            style={{ width: '100%', borderRadius: 12, backgroundColor: headerColor }}
+                            contentStyle={{ height: 48 }}
+                            labelStyle={{ fontSize: 16, fontWeight: 'bold' }}
+                        >
+                            Aceptar
+                        </Button>
                     </Dialog.Actions>
                 </Dialog>
             </Portal>
-        </View>
-    )
+        );
+    }
 
     const GenerarFactura = async () => {
         try {
             if (itemsF.length === 0 && total === '0.00') {
-                let response = await apiClient.post(`cambio`,
-                    {
-                        itemsC: itemsC,
-                        cliente: cliente
-                    })
-                if (response.data[0] == 'ok') {
-                    setTitulo('¡Exito!')
-                    setTexto('Cambios registrados correctamente!')
-                    setVisible(true)
-                    MetodoReiniciar();
-                    return
-                } else if (response.data[0] == 'cae') {
+                try {
+                    let response = await apiClient.post(`cambio`, 
+                        { itemsC: itemsC, cliente: cliente })
+                    
+                    if (response.data['error'] == null) {
+                        setTitulo('¡Exito!')
+                        setTexto('Cambios registrados correctamente!')
+                        setVisible(true)
+                        MetodoReiniciar();
+                        return
+                    } else 
+                        if (response.data['error'] == 'Cambios error') {
+                            setTitulo('Error')
+                            setTexto('Error al registrar los cambios')
+                            setVisible(true)
+                            return
+                    } else {
+                        setTitulo('Error')
+                        setTexto('Error interno del servidor, avisar a administracion')
+                        setVisible(true)
+                        return
+                    }
+                } catch (error) {
                     setTitulo('Error')
-                    setTexto('LA FACTURA FUE GENERADA, SI NO LA VE EN EL SISTEMA AVISAR A JUAN')
-                    setVisible(true)
-                    MetodoReiniciar();
-                    return
-                }
-                else {
-                    setTitulo('Error')
-                    setTexto('Error al registrar los cambios')
+                    if (error.code === "ERR_NETWORK") {
+                        setTexto('No se pudo conectar con el servidor, verifique su conexión a internet')
+                    } else if (error.code === "ERR_BAD_RESPONSE") {
+                        setTexto("Error interno del servidor\n" + error);
+                    } else if (error.request) {
+                        setTexto("No hubo respuesta del servidor");
+                    }
                     setVisible(true)
                     return
                 }
             } else {
-                if (tipo === 3 && !NroFact) {
+                if (tipo === 3 && !NroFact) {                  
                     showModal(true)
                 }
                 else if (tipo === 99) {
-                let response = await apiClient.post(`presupuesto`, {
-                    Fecha: fecha,
-                    cliente: cliente,
-                    N_Presu: factura,
-                    PtoVta: usePtoventa,
-                    Total: total,
-                    items: itemsF,
-                    itemsC: itemsC
-                })
-                if (response.data[0] == 'ok') {
-                    setPreImprimir([tipo, usePtoventa,
-                        String(factura), String(fecha), cliente, itemsF, total])
-                    setVisibleImprimir(true)
-                }
-                else if (response.data[0] == 'duplicado') {
-                    setTitulo('Error')
-                    setTexto('El presupuesto ya existe, avisar a administracion')
-                    setVisible(true)
-                }
-                }
-                else {
-                    let response = await apiClient.post(`facturacion`,
-                        {
+                    try {
+                        let response = await apiClient.post(`presupuesto`, {
                             cliente: cliente,
-                            total: total,
-                            tipo: tipo,
-                            NroFact: factura,
-                            ptoventa: usePtoventa,
+                            N_Presu: factura,
+                            PtoVta: usePtoventa,
+                            Total: total,
                             items: itemsF,
-                            itemsC: itemsC,
-                            NroFactD: NroFact
+                            itemsC: itemsC
                         })
-                    if (response) {
-                        if (response.data[0] == 'error') {
-                            setTitulo('Error de factracion')
-                            setTexto('No es posible hacer facturas B. Reintente con el cliente correcto')
-                            setVisible(true)
-                        }
-                        else if (response.data[0] == 'cae') {
-                            setTitulo('Error')
-                            setTexto('LA FACTURA FUE GENERADA, SI NO LA VE EN EL SISTEMA AVISAR A JUAN')
-                            setVisible(true)
-                            MetodoReiniciar();
+                        if (response.data['error'] == null) {
+                            setPreImprimir([tipo, usePtoventa,
+                                String(factura), String(fecha), cliente, itemsF, total])
+                            setVisibleImprimir(true)
                             return
                         }
-                        else {
-                            setPreImprimir([tipo, usePtoventa,
-                                String(factura), String(fecha), cliente, itemsF,
-                                String(response.data[3]), String(response.data[4]),
-                                response.data[0], response.data[1], response.data[2]])
-                            setVisibleImprimir(true)
+                        else if (response.data['error'] == 'Duplicado') {
+                            setTitulo('Error')
+                            setTexto('El presupuesto ya existe, avisar a administracion')
+                            setVisible(true)
+                            return
+                        } else {
+                            setTitulo('Error')
+                            setTexto('Error interno del servidor, avisar a administracion')
+                            setVisible(true)
+                            return
                         }
+                    } catch (error) {
+                        setTitulo('Error')
+                        if (error.code === "ERR_NETWORK") {
+                            setTexto('No se pudo conectar con el servidor, verifique su conexión a internet')
+                        } else if (error.code === "ERR_BAD_RESPONSE") {
+                            setTexto("Error interno del servidor\n" + error);
+                        } else if (error.request) {
+                            setTexto("No hubo respuesta del servidor");
+                        }
+                        setVisible(true)
+                        return
+                    }
+                }
+                else {
+                    try {
+                        let response = await apiClient.post(`facturacion`,
+                            {
+                                cliente: cliente,
+                                total: total,
+                                tipo: tipo,
+                                NroFact: factura,
+                                ptoventa: usePtoventa,
+                                items: itemsF,
+                                itemsC: itemsC,
+                                NroFactD: NroFact
+                            })
+                        if (response) {
+                            if (response.data['error'] == 'Exento error') {
+                                setTitulo('Error en facturacion')
+                                setTexto('No es posible hacer facturas B. Reintente con el cliente correcto.')
+                                setVisible(true)
+                                return
+                            }
+                            else if (response.data['error'] == 'CAE error') {
+                                setTitulo('Error')
+                                setTexto('LA FACTURA FUE GENERADA, SI NO LA VE EN EL SISTEMA AVISAR A JUAN')
+                                setVisible(true)
+                                MetodoReiniciar();
+                                return
+                            }
+                            else {
+                                setPreImprimir([tipo, usePtoventa,
+                                    String(factura), String(fecha), cliente, itemsF,
+                                    String(response.data[3]), String(response.data[4]),
+                                    response.data[0], response.data[1], response.data[2]])
+                                setVisibleImprimir(true)
+                                return
+                            }
+                        }
+                    } catch (error) {
+                        setTitulo('Error')
+                        if (error.code === "ERR_NETWORK") {
+                            setTexto('No se pudo conectar con el servidor, verifique su conexión a internet')
+                        } else if (error.code === "ERR_BAD_RESPONSE") {
+                            setTexto("Error interno del servidor\n" + error);
+                        } else if (error.request) {
+                            setTexto("No hubo respuesta del servidor");
+                        }
+                        setVisible(true)
+                        return
                     }
                 }
             }
         }
         catch (error) {
-                setTitulo('Error')
-                if (error.code === "ERR_NETWORK") {
-                    setTexto('No se pudo conectar con el servidor, verifique su conexión a internet')
-                } else if (error.code === "ERR_BAD_RESPONSE") {
-                    setTexto("Error interno del servidor\n" + error);
-                } else if (error.request) {
-                    setTexto("No hubo respuesta del servidor");
-                }
-                setVisible(true)
+            setTitulo('Error')
+            if (error.code === "ERR_NETWORK") {
+                setTexto('No se pudo conectar con el servidor, verifique su conexión a internet')
+            } else if (error.code === "ERR_BAD_RESPONSE") {
+                setTexto("Error interno del servidor\n" + error);
+            } else if (error.request) {
+                setTexto("No hubo respuesta del servidor");
+            }
+            setVisible(true)
         }
     };
 
@@ -634,13 +730,14 @@ export default function Facturacion({ navigation, route }) {
                 preImprimir[6], preImprimir[7], preImprimir[8], preImprimir[9], preImprimir[10])
             }
             MetodoReiniciar();
-        }catch(e){
-            console.log(e)
+        }catch (error) {
+            console.log(error)
         }
         
     }
     
     const MetodoReiniciar = async () => {
+        console.log('metio reiniciar')
         hideModalImprimir()
         setLoading(true);
         if (navigation && navigation.setParams) {

@@ -1,22 +1,19 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { StyleSheet, View, ScrollView } from 'react-native';
-import { 
-    Text, 
-    Surface, 
-    DataTable, 
-    Icon,
-    ActivityIndicator,
+import { Text, Surface, DataTable, Icon, ActivityIndicator, 
+    Portal, Dialog, Button 
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DatePickerInput } from 'react-native-paper-dates';
 import { useFocusEffect } from '@react-navigation/native';
 import { useStore, apiClient } from './store'
 
+
 export default function Stock({ navigation, route }) {
     const [fecha, setFecha] = useState(new Date());
-    const [usePtoventa, setPtoventa] = useState(useStore.getString('usePtoventa'))
+    const usePtoventa = useStore.getString('usePtoventa')
     
-    // Estados para las 4 tablas
+    // Estados para las 7 tablas
     const [dataTabla1, setDataTabla1] = useState([]);
     const [dataTabla2, setDataTabla2] = useState([]);
     const [dataTabla3, setDataTabla3] = useState([]);
@@ -27,6 +24,10 @@ export default function Stock({ navigation, route }) {
 
     const [loading, setLoading] = useState(false);
 
+    const [visible, setVisible] = useState(false);
+    const [titulo, setTitulo] = useState('');
+    const [texto, setTexto] = useState('');
+
     useFocusEffect(
         useCallback(() => {
             BuscarInfo();
@@ -36,27 +37,28 @@ export default function Stock({ navigation, route }) {
     const BuscarInfo = async () => {
         setLoading(true)
         try { 
-            const currentPtoVenta = useStore.getString('usePtoventa');
             let response = await apiClient.post(`getStockInfo`, {
                 Fecha: fecha.toISOString().slice(0, 10),
-                PtoVenta: currentPtoVenta
+                PtoVenta: usePtoventa
             })
-            if (response.data != null) {
-                setDataTabla1(response.data.Tabla1)
-                setDataTabla2(response.data.Tabla2)
-                setDataTabla3(response.data.Tabla3)
-                setDataTabla4(response.data.Tabla4)
-                setDataTabla5(response.data.Tabla5)
-                setDataTabla6(response.data.Tabla6)
-                setDataTabla7(response.data.Tabla7)
-                setLoading(false)
-            }
+            setDataTabla1(response.data.Tabla1)
+            setDataTabla2(response.data.Tabla2)
+            setDataTabla3(response.data.Tabla3)
+            setDataTabla4(response.data.Tabla4)
+            setDataTabla5(response.data.Tabla5)
+            setDataTabla6(response.data.Tabla6)
+            setDataTabla7(response.data.Tabla7)
+            setLoading(false)
         } catch (e) {
+            setTitulo('Error')
+            setTexto('Error al conectar con el servidor')
+            setVisible(true)
+            setLoading(false)
             console.error(e);
         }
     }
 
-    // Componente reutilizable para las secciones de tabla
+    // Componentes reutilizable para las secciones de tabla
     const TablaSeccion = ({ titulo, icono, data }) => (
         <Surface style={styles.tableSurface} elevation={1}>
             <View style={styles.sectionHeader}>
@@ -92,7 +94,7 @@ export default function Stock({ navigation, route }) {
         </Surface>
     );
 
-     const TablaSeccionVenta = ({ titulo, icono, data }) => (
+    const TablaSeccionVenta = ({ titulo, icono, data }) => (
         <Surface style={styles.tableSurface} elevation={1}>
             <View style={styles.sectionHeader}>
                 <Icon source={icono} size={24} color="#663399" />
@@ -129,8 +131,75 @@ export default function Stock({ navigation, route }) {
         </Surface>
     );   
     
-    
-    
+    const Alerta = () => {
+        const isSuccess = titulo.toLowerCase().includes('exito') || titulo.toLowerCase().includes('éxito');
+        //lo dejo expresado por si en algun momento es necesario un aviso
+        //const isWarning = titulo.toLowerCase().includes('cae') || titulo.toLowerCase().includes('aviso');
+        
+        let headerColor = '#BD1C10'; // Default a Rojo de Error
+        let bgColor = '#FFEBEE';
+        let iconName = 'alert-circle-outline';
+
+        if (isSuccess) {
+            headerColor = '#4CAF50';
+            bgColor = '#E8F5E9';
+            iconName = 'check-circle-outline';
+        } /*else if (isWarning) {
+            headerColor = '#FF9800';
+            bgColor = '#FFF3E0';
+            iconName = 'alert-outline';
+        }*/
+
+        return (
+            <Portal>
+                <Dialog 
+                    visible={visible} 
+                    onDismiss={() => setVisible(false)}
+                    style={{ borderRadius: 28, backgroundColor: '#fff', overflow: 'hidden' }}
+                >
+                    {/* Línea decorativa superior */}
+                    <View style={{ backgroundColor: headerColor, height: 6 }} />
+                    
+                    <View style={{ alignItems: 'center', marginTop: 24 }}>
+                        <View style={{ 
+                            backgroundColor: bgColor, 
+                            width: 72, 
+                            height: 72, 
+                            borderRadius: 36, 
+                            justifyContent: 'center', 
+                            alignItems: 'center' 
+                        }}>
+                            <Icon source={iconName} color={headerColor} size={40} />
+                        </View>
+                    </View>
+
+                    <Dialog.Title style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 22, paddingTop: 16 }}>
+                        {titulo}
+                    </Dialog.Title>
+
+                    <Dialog.Content>
+                        <Text variant="bodyLarge" style={{ textAlign: 'center', color: '#555', lineHeight: 24 }}>
+                            {texto}
+                        </Text>
+                    </Dialog.Content>
+
+                    <Dialog.Actions style={{ flexDirection: 'column', paddingHorizontal: 20, paddingBottom: 20 }}>
+                        <Button 
+                            mode="contained" 
+                            onPress={() => setVisible(false)}
+                            style={{ width: '100%', borderRadius: 12, backgroundColor: headerColor }}
+                            contentStyle={{ height: 48 }}
+                            labelStyle={{ fontSize: 16, fontWeight: 'bold' }}
+                        >
+                            Aceptar
+                        </Button>
+                    </Dialog.Actions>
+                </Dialog>
+            </Portal>
+        );
+    }
+
+
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -193,6 +262,13 @@ export default function Stock({ navigation, route }) {
                         data={dataTabla4} 
                     />
                 ) : null}
+                {dataTabla6.length > 0 ? (
+                    <TablaSeccion 
+                        titulo="Carga en Negocio" 
+                        icono="archive-arrow-up" 
+                        data={dataTabla6}
+                    />
+                ) : null}
                 {dataTabla7.length > 0 ? (
                     <TablaSeccion 
                         titulo="Cambios sin ventas" 
@@ -209,6 +285,7 @@ export default function Stock({ navigation, route }) {
                 ) : null}
 
             </ScrollView>
+            <Alerta></Alerta>
         </SafeAreaView>
     );
 }
@@ -276,11 +353,11 @@ const styles = StyleSheet.create({
         height: 56,
     },
     cellText: {
-        fontSize: 15,
+        fontSize: 14,
         color: '#1a1a1a',
     },
     valueText: {
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: '600',
         color: '#663399',
     },
