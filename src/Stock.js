@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { StyleSheet, View, ScrollView } from 'react-native';
 import { Text, Surface, DataTable, Icon, ActivityIndicator, 
-    Portal, Dialog, Button 
+    Portal, Dialog, Button, TextInput
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DatePickerInput } from 'react-native-paper-dates';
@@ -21,6 +21,8 @@ export default function Stock({ navigation, route }) {
     const [dataTabla5, setDataTabla5] = useState([]);
     const [dataTabla6, setDataTabla6] = useState([]);
     const [dataTabla7, setDataTabla7] = useState([]);
+    const [importeVentas, setImporteVentas] = useState('Cargando..');
+    const [ImporteColor, setImporteColor] = useState('#d37f00');
 
     const [loading, setLoading] = useState(false);
 
@@ -48,6 +50,19 @@ export default function Stock({ navigation, route }) {
             setDataTabla5(response.data.Tabla5)
             setDataTabla6(response.data.Tabla6)
             setDataTabla7(response.data.Tabla7)
+            
+            if (response.data.Total !== '0.00') {
+                const formattedTotal = parseFloat(response.data.Total).toLocaleString('es-AR', { 
+                    minimumFractionDigits: 1, 
+                    maximumFractionDigits: 1 
+                });
+                setImporteVentas(`${formattedTotal}`);
+                setImporteColor('#43a047');
+            } else {
+                setImporteVentas('0.00');
+                setImporteColor('#43a047');
+            }
+            
             setLoading(false)
         } catch (e) {
             setTitulo('Error')
@@ -63,15 +78,19 @@ export default function Stock({ navigation, route }) {
         <Surface style={styles.tableSurface} elevation={1}>
             <View style={styles.sectionHeader}>
                 <Icon source={icono} size={24} color="#663399" />
-                <Text variant="titleMedium" style={styles.sectionTitle}>{titulo}</Text>
+                <Text variant="titleMedium" style={styles.sectionTitle} maxFontSizeMultiplier={1.1}>{titulo}</Text>
             </View>
             
             <ScrollView >
                 <View>
                     <DataTable style={[styles.table, { width: 300 }]}>
                         <DataTable.Header style={styles.tableHeader}>
-                            <DataTable.Title style={styles.widthComp} textStyle={styles.headerText}>Producto.</DataTable.Title>
-                            <DataTable.Title style={styles.widthTotal} textStyle={styles.headerText}>Cantidad</DataTable.Title>
+                            <DataTable.Title style={styles.widthComp}>
+                                <Text style={styles.headerText} maxFontSizeMultiplier={1.1}>Producto.</Text>
+                            </DataTable.Title>
+                            <DataTable.Title style={styles.widthTotal}>
+                                <Text style={styles.headerText} maxFontSizeMultiplier={1.1}>Cantidad</Text>
+                            </DataTable.Title>
                         </DataTable.Header>
 
                         {data.length === 0 ? (
@@ -83,8 +102,12 @@ export default function Stock({ navigation, route }) {
                         ) : (
                             data.map((item, index) => (
                                 <DataTable.Row key={index} style={styles.tableRow}>
-                                    <DataTable.Cell style={styles.widthComp} textStyle={styles.cellText}>{item[0]}</DataTable.Cell>
-                                    <DataTable.Cell style={styles.widthTotal} textStyle={styles.valueText}>{Math.round(parseFloat(item[1]))}</DataTable.Cell>
+                                    <DataTable.Cell style={styles.widthComp}>
+                                        <Text style={styles.cellText} maxFontSizeMultiplier={1.1} numberOfLines={2}>{item[0]}</Text>
+                                    </DataTable.Cell>
+                                    <DataTable.Cell style={styles.widthTotal}>
+                                        <Text style={styles.valueText} maxFontSizeMultiplier={1.1}>{Math.round(parseFloat(item[1]) * 10) / 10}</Text>
+                                    </DataTable.Cell>
                                 </DataTable.Row>
                             ))
                         )}
@@ -105,9 +128,15 @@ export default function Stock({ navigation, route }) {
                 <View>
                     <DataTable style={[styles.table, { width: 460 }]}>
                         <DataTable.Header style={styles.tableHeader}>
-                            <DataTable.Title style={styles.widthComp} textStyle={styles.headerText}>Producto.</DataTable.Title>
-                            <DataTable.Title style={styles.widthTotal} textStyle={styles.headerText}>Cantidad</DataTable.Title>
-                            <DataTable.Title style={styles.widthTotal} textStyle={styles.headerText}>Cambios</DataTable.Title>
+                            <DataTable.Title style={styles.widthComp}>
+                                <Text style={styles.headerText} maxFontSizeMultiplier={1.1}>Producto.</Text>
+                            </DataTable.Title>
+                            <DataTable.Title style={styles.widthTotal}>
+                                <Text style={styles.headerText} maxFontSizeMultiplier={1.1}>Cantidad</Text>
+                            </DataTable.Title>
+                            <DataTable.Title style={styles.widthTotal}>
+                                <Text style={styles.headerText} maxFontSizeMultiplier={1.1}>Cambios</Text>
+                            </DataTable.Title>
                         </DataTable.Header>
 
                         {data.length === 0 ? (
@@ -119,9 +148,15 @@ export default function Stock({ navigation, route }) {
                         ) : (
                             data.map((item, index) => (
                                 <DataTable.Row key={index} style={styles.tableRow}>
-                                    <DataTable.Cell style={styles.widthComp} textStyle={styles.cellText}>{item.Producto}</DataTable.Cell>
-                                    <DataTable.Cell style={styles.widthTotal} textStyle={styles.valueText}>{Math.round(parseFloat(item.Cantidad_Total))}</DataTable.Cell>
-                                    <DataTable.Cell style={styles.widthTotal} textStyle={styles.valueText}>{Math.round(parseFloat(item.Cambio_Total))}</DataTable.Cell>
+                                    <DataTable.Cell style={styles.widthComp}>
+                                        <Text style={styles.cellText} maxFontSizeMultiplier={1.1} numberOfLines={2}>{item.Producto}</Text>
+                                    </DataTable.Cell>
+                                    <DataTable.Cell style={styles.widthTotal}>
+                                        <Text style={styles.valueText} maxFontSizeMultiplier={1.1}>{Math.round(parseFloat(item.Cantidad_Total) * 10) / 10}</Text>
+                                    </DataTable.Cell>
+                                    <DataTable.Cell style={styles.widthTotal}>
+                                        <Text style={styles.valueText} maxFontSizeMultiplier={1.1}>{Math.round(parseFloat(item.Cambio_Total) * 10) / 10}</Text>
+                                    </DataTable.Cell>
                                 </DataTable.Row>
                             ))
                         )}
@@ -207,7 +242,7 @@ export default function Stock({ navigation, route }) {
                 <View style={styles.headerContainer}>
                     <Icon source="package-variant-closed" size={40} color="#663399" />
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text variant="headlineMedium" style={styles.title}>Control de Stock</Text>
+                        <Text variant="headlineMedium" style={styles.title} maxFontSizeMultiplier={1.1}>Control de Stock</Text>
                         {loading && <ActivityIndicator animating={true} color="#663399" size="small" style={{ marginLeft: 10, marginTop: 8 }} />}
                     </View>
                 </View>
@@ -284,6 +319,22 @@ export default function Stock({ navigation, route }) {
                     />
                 ) : null}
 
+                <Surface style={[styles.totalSurface, { backgroundColor: ImporteColor, marginTop: 16 }]} elevation={2}>
+                    <View style={styles.totalHeader}>
+                        <Icon source="currency-usd" size={24} color="#fff" />
+                        <Text variant="titleMedium" style={styles.totalLabel} maxFontSizeMultiplier={1.1}>TOTAL VENTAS</Text>
+                    </View>
+                    <TextInput
+                        mode="flat"
+                        value={importeVentas}
+                        style={styles.totalInput}
+                        textColor="#fff"
+                        underlineColor="transparent"
+                        activeUnderlineColor="transparent"
+                        readOnly
+                    />
+                </Surface>
+
             </ScrollView>
             <Alerta></Alerta>
         </SafeAreaView>
@@ -350,7 +401,7 @@ const styles = StyleSheet.create({
     tableRow: {
         borderBottomWidth: 1,
         borderBottomColor: '#f0f0f0',
-        height: 56,
+        minHeight: 56,
     },
     cellText: {
         fontSize: 14,
@@ -370,5 +421,29 @@ const styles = StyleSheet.create({
         width: 75,
         flex: 0,
         justifyContent: 'center'
-    }
+    },
+    totalSurface: {
+        padding: 20,
+        borderRadius: 20,
+        backgroundColor: '#663399',
+        marginTop: 8,
+    },
+    totalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 4,
+        gap: 10,
+    },
+    totalLabel: {
+        color: 'rgba(255,255,255,0.8)',
+        fontWeight: 'bold',
+        letterSpacing: 1,
+    },
+    totalInput: {
+        backgroundColor: 'transparent',
+        fontSize: 28,
+        fontWeight: 'bold',
+        height: 50,
+        paddingHorizontal: 0,
+    },
 });
