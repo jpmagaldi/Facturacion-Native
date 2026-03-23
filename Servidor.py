@@ -36,7 +36,7 @@ def CrearLogs(self):
 # ------- DATOS PARA AFIP -------
 URL_QR = "https://www.afip.gob.ar/fe/qr/"
 
-CUIT = 30670206528
+
 
 cert_dir = resource_path("Certificados")
 
@@ -44,17 +44,22 @@ WSAa = WSAA()
 WSFEv1 = WSFEv1()
 
 
-CRT = cert_dir + '\\productioncrt.crt'
-KEY = cert_dir + '\\privada.key'
+#CRT = cert_dir + '\\productioncrt.crt'
+#KEY = cert_dir + '\\privada.key'
+#CUIT = 30670206528
+#WSFEv1.Cuit = CUIT
+#WSFEv1.WSDL = "https://servicios1.afip.gov.ar/wsfev1/service.asmx?WSDL"
+#WSAa.WSDL = "https://wsaa.afip.gov.ar/ws/services/LoginCms?wsdl"
+#WSAa.WSAAURL = "https://wsaa.afip.gov.ar/ws/services/LoginCms"
 
 
+CRT = cert_dir + '\\empresa.crt'
+KEY = cert_dir + '\\privadatesting.key'
+CUIT = 20218452788
 WSFEv1.Cuit = CUIT
-
-WSFEv1.WSDL = "https://servicios1.afip.gov.ar/wsfev1/service.asmx?WSDL"
-
-
-WSAa.WSDL = "https://wsaa.afip.gov.ar/ws/services/LoginCms?wsdl"
-WSAa.WSAAURL = "https://wsaa.afip.gov.ar/ws/services/LoginCms"
+WSFEv1.WSDL = "https://wswhomo.afip.gov.ar/wsfev1/service.asmx?WSDL"
+WSAa.WSDL = "https://wsaahomo.afip.gov.ar/ws/services/LoginCms?wsdl"
+WSAa.WSAAURL = "https://wsaahomo.afip.gov.ar/ws/services/LoginCms"
 
 
 try:
@@ -68,10 +73,10 @@ def conectar_servidor():
 	while True:
 		try:
 			connection = mysql.connector.connect(
-				host='127.0.0.1',
+				host='192.168.0.142',
 				port=3306,
-				user='root',
-				password='1234',
+				user='ventas',
+				password='ventas',
 				database='negocio',
 				connection_timeout=5,
 			)
@@ -97,7 +102,7 @@ def conectar_afip():
 
 conectar_afip()
 
-
+ 
 # ------- APP FLASK -------
 app = Flask(__name__)
 
@@ -186,7 +191,6 @@ def calculoTotal(Fecha, PtoVta):
 @app.route("/facturacion", methods=["POST"])
 def facturacion():
 	try:
-		#arr = []
 		comp = ""
 
 		data_req = request.json
@@ -199,7 +203,10 @@ def facturacion():
 		total = float(data_req["total"])
 		tipo = int(data_req["tipo"])
 		NroFact = int(data_req["NroFact"])
-		NroFactD = int(data_req["NroFactD"])
+		if data_req.get("NroFactD") != '':
+			NroFactD = int(data_req["NroFactD"])
+		else:
+			NroFactD = ''
 		PtoVta = int(data_req["ptoventa"])
 		items = data_req["items"]
 		itemsC = data_req["itemsC"]
@@ -213,8 +220,9 @@ def facturacion():
 		# Generamos el CAE
 		cae, cae_vto, comp, err, obs = generarCAE(
 			Cuitcliente, tipo, NroFact, NroFactD, 
-			date, PtoVta, total, neto, iva
+			DATE, PtoVta, total, neto, iva
 		)
+
 		if cae == "NO":
 			return jsonify({"error": "CAE error"})
 
@@ -243,8 +251,7 @@ def facturacion():
 		qr_base64 = base64.b64encode(buf.getvalue()).decode()
 
 		fecha_vto = f"{cae_vto[6:8]}/{cae_vto[4:6]}/{cae_vto[0:4]}"
-		#arr = [qr_base64, cae, fecha_vto, neto, iva]
-		
+
 		return jsonify({"error": None, "qr_base64": qr_base64, "cae": cae, "fecha_vto": fecha_vto, "neto": neto, "iva": iva})
 	except Exception as e:
 		CrearLogs(e)
@@ -262,7 +269,6 @@ def generarCAE(Cuitcliente, tipo, NroFact, NroFactD,
 		WSFEv1.AgregarIva(5, neto, iva)  # 21%
 
 		if tipo == 3:
-			
 			comp = "Ncred. A"
 			WSFEv1.AgregarCmpAsoc(pto_vta=PtoVta, nro=NroFactD)
 		else:
@@ -310,6 +316,7 @@ def InsertFacturaBD(date, comp, formatfact, cliente,
 			return True
 	except:
 		connection.rollback()
+		CrearLogs(e)
 		return False
 
 # --------------
@@ -797,5 +804,5 @@ def buscar_productos():
 
 
 if __name__ == "__main__":
-	#app.run(host='0.0.0.0', port=5000, debug=True) #Para testing
-	serve(app, host='0.0.0.0', port=5000) #Para produccion
+	app.run(host='0.0.0.0', port=5000, debug=True) #Para testing
+	#serve(app, host='0.0.0.0', port=5000) #Para produccion

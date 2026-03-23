@@ -59,9 +59,8 @@ export default function Facturacion({ navigation, route }) {
     BLEPrinter.init()
 
 
-    const showModal = (name) => {
+    const showModal = () => {
         setVisibleNC(true)
-        setSeleccion(name)
     };
 
     const hideModal = () => {
@@ -126,7 +125,8 @@ export default function Facturacion({ navigation, route }) {
             await fetchDate();
             await fetchInvoice();
             setCliente('');
-            //setItemsF([]);
+            setItemsF([]);
+            setItemsC([]);
             setTotal('0.00');
             setNroFact('')
             setPreImprimir([])
@@ -519,7 +519,7 @@ export default function Facturacion({ navigation, route }) {
                     } else 
                         if (response.data['error'] == 'Cambios error') {
                             setTitulo('Error')
-                            setTexto('Error al registrar los cambios')
+                            setTexto('Error al registrar los cambios, no seran contabilizados')
                             setVisible(true)
                             return
                     } else {
@@ -541,8 +541,9 @@ export default function Facturacion({ navigation, route }) {
                     return
                 }
             } else {
-                if (tipo === 3 && !NroFact) {                  
+                if (tipo === 3 && !NroFact) {                
                     showModal(true)
+                    return
                 }
                 else if (tipo === 99) {
                     try {
@@ -597,28 +598,26 @@ export default function Facturacion({ navigation, route }) {
                                 itemsC: itemsC,
                                 NroFactD: NroFact
                             })
-                        if (response) {
-                            if (response.data['error'] == 'Exento error') {
-                                setTitulo('Error en facturacion')
-                                setTexto('No es posible hacer facturas B. Reintente con el cliente correcto.')
-                                setVisible(true)
-                                return
-                            }
-                            else if (response.data['error'] == 'CAE error') {
-                                setTitulo('Error')
-                                setTexto('LA FACTURA FUE GENERADA, SI NO LA VE EN EL SISTEMA AVISAR A JUAN')
-                                setVisible(true)
-                                MetodoReiniciar();
-                                return
-                            }
-                            else {
-                                setPreImprimir([tipo, usePtoventa,
-                                    String(factura), String(fecha), cliente, itemsF,
-                                    String(response.data[3]), String(response.data[4]),
-                                    response.data[0], response.data[1], response.data[2]])
-                                setVisibleImprimir(true)
-                                return
-                            }
+                        if (response.data['error'] == 'Exento error') {
+                            setTitulo('Error en facturacion')
+                            setTexto('No es posible hacer facturas B. Reintente con el cliente correcto.')
+                            setVisible(true)
+                            return
+                        }
+                        else if (response.data['error'] == 'CAE error') {
+                            setTitulo('Error')
+                            setTexto('LA FACTURA FUE GENERADA, SI NO LA VE EN EL SISTEMA AVISAR A JUAN')
+                            setVisible(true)
+                            MetodoReiniciar();
+                            return
+                        }
+                        else {
+                            setPreImprimir([tipo, usePtoventa,
+                                String(factura), String(fecha), cliente, itemsF,
+                                String(response.data['neto']), String(response.data['iva']),
+                                response.data['qr_base64'], response.data['cae'], response.data['fecha_vto']])
+                            setVisibleImprimir(true)
+                            return
                         }
                     } catch (error) {
                         setTitulo('Error')
@@ -672,7 +671,18 @@ export default function Facturacion({ navigation, route }) {
                 </View>
                 
                 <Dialog.Title style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 24, paddingVertical: 10 }}>
-                    {tipo === 3 ? '¡Presupuesto Emitido!' : '¡Venta Exitosa!'}
+                    {(() => {
+                        switch (tipo) {
+                        case 1:
+                            return '¡Venta Exitosa!';
+                        case 3:
+                            return '¡Nota de C. Emitida!';
+                        case 99:
+                            return '¡Presupuesto Emitido!';
+                        default:
+                            return '¡Acción Completada!';
+                        }
+                    })()}
                 </Dialog.Title>
                 
                 <Dialog.Content>
@@ -720,7 +730,6 @@ export default function Facturacion({ navigation, route }) {
     
     const handleImprimir = async () => {
         try{
-            //await connectPrinter()
             if (preImprimir[0] == 99) {
                 await ImprimirP(duplicado, preImprimir[1], preImprimir[2],
                 preImprimir[3], preImprimir[4], preImprimir[5], preImprimir[6])
@@ -737,7 +746,6 @@ export default function Facturacion({ navigation, route }) {
     }
     
     const MetodoReiniciar = async () => {
-        console.log('metio reiniciar')
         hideModalImprimir()
         setLoading(true);
         if (navigation && navigation.setParams) {
@@ -816,6 +824,7 @@ export default function Facturacion({ navigation, route }) {
             title = 'Cod. 003 - NOTA DE CREDITO A'
             duplicado = 0
         }
+
 
         for (let i = 0; i <= duplicado; i++) {
             await Promise.all([
@@ -994,69 +1003,84 @@ export default function Facturacion({ navigation, route }) {
         </Surface>
     )
 
-    const ModalNC = () => (
-        <Portal>
-            <Modal style={{ padding: 10 }} contentContainerStyle={{ backgroundColor: 'white', padding: 10, height: 340, borderRadius: 10 }}
-                visible={visibleNC} onDismiss={hideModal} dismissable={false}>
-                <View style={{ bottom: 9, flexDirection: 'row', justifyContent: 'center' }}>
-                    <Text variant="titleMedium"
-                        style={{
-                            top: 7,
-                            fontWeight: 'bold',
+    const renderModalNC = () => {
+        const isValid = NroFact && NroFact.trim().length > 0;
+        
+        return (
+            <Portal>
+                <Dialog 
+                    visible={visibleNC} 
+                    onDismiss={hideModal} 
+                    style={{ borderRadius: 28, backgroundColor: '#fff', overflow: 'hidden' }}
+                    dismissable={false}
+                >
+                    {/* Línea decorativa superior */}
+                    <View style={{ backgroundColor: '#663399', height: 6 }} />
+                    
+                    <View style={{ alignItems: 'center', marginTop: 24 }}>
+                        <View style={{ 
+                            backgroundColor: '#f3e5f5', 
+                            width: 72, 
+                            height: 72, 
+                            borderRadius: 36, 
+                            justifyContent: 'center', 
+                            alignItems: 'center' 
                         }}>
-                        Ingrese los siguientes datos:
-                    </Text>
-                </View>
-                <Divider
-                    style={{
-                        margin: 8,
-                        top: 1,
-                    }}
-                    bold='True' />
-
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginHorizontal: 10 }}>
-                    <View style={{ flex: 1, flexDirection: 'column', justifyContent: 'space-between' }}>
-                        <Opciones />
+                            <Icon source="file-document-edit-outline" color="#663399" size={40} />
+                        </View>
                     </View>
-                    <Button style={{ top: 5 }} textColor='green' onPress={hideModal}>
-                        Aceptar
-                    </Button>
-                </View>
-            </Modal>
-        </Portal>
-    )
 
-    const Opciones = () => {
-        return (
-            <>
-                <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
-                    <InputCantidad value={NroFact} onchange={(e) => { setNroFact(e) }}></InputCantidad>
-                    {(NroFact.length > 0) ? <Icon size={18} source='check-bold' /> : <Icon size={18} source='block-helper' />}
-                </View>
-                <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
-                    <TextInput style={{ marginRight: 8, maxHeight: 60 }} value={cliente[0]} placeholder='Ingrese el Cuit'></TextInput>
-                    {cliente ? <Icon size={18} source='check-bold' /> : <Icon size={18} source='block-helper' />}
-                </View>
-            </>
-        )
-    }
+                    <Dialog.Title style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 22, paddingTop: 16 }}>
+                        Referencia de Factura
+                    </Dialog.Title>
 
-    const InputCantidad = ({ value, onchange }) => {
-        const [currentvalue, setcurrentvalue] = useState(value);
+                    <Dialog.Content>
+                        <Text variant="bodyMedium" style={{ textAlign: 'center', color: '#666', marginBottom: 24, paddingHorizontal: 10 }}>
+                            Para emitir una Nota de Crédito, es necesario referenciar la factura original.
+                        </Text>
+                        
+                        <View style={{ gap: 16 }}>
+                            <TextInput
+                                mode="outlined"
+                                label="Número de Factura"
+                                placeholder="Ej: 0001-00000123"
+                                value={NroFact}
+                                keyboardType='numeric'
+                                onChangeText={setNroFact}
+                                autoFocus={true}
+                                outlineColor="#e0e0e0"
+                                activeOutlineColor="#663399"
+                                left={<TextInput.Icon icon="receipt" color="#663399" />}
+                                style={{ backgroundColor: '#fff' }}
+                            />
+                            
+                            <TextInput
+                                mode="outlined"
+                                label="CUIT del Cliente"
+                                value={cliente ? cliente[0] : ''}
+                                editable={false}
+                                outlineColor="#e0e0e0"
+                                activeOutlineColor="#663399"
+                                left={<TextInput.Icon icon="card-account-details-outline" color="#663399" />}
+                                style={{ backgroundColor: '#f5f5f5' }}
+                            />
+                        </View>
+                    </Dialog.Content>
 
-        return (
-            <TextInput
-                style={{ marginRight: 8, maxHeight: 60, minWidth: 140 }}
-                placeholder='Ingrese Nro Fact (solo numero)'
-                value={currentvalue}
-                //autoFocus={true}
-                keyboardType='numeric'
-                onChangeText={v => setcurrentvalue(v)}
-                onEndEditing={() => onchange(currentvalue)}
-                onSubmitEditing={() => {
-                    onchange(currentvalue)
-                }}
-            />
+                    <Dialog.Actions style={{ flexDirection: 'column', paddingHorizontal: 20, paddingBottom: 25 }}>
+                        <Button 
+                            mode="contained" 
+                            onPress={hideModal}
+                            disabled={!isValid}
+                            style={{ width: '100%', borderRadius: 12, backgroundColor: isValid ? '#663399' : '#e0e0e0' }}
+                            contentStyle={{ height: 48 }}
+                            labelStyle={{ fontSize: 16, fontWeight: 'bold' }}
+                        >
+                            Confirmar y Cerrar
+                        </Button>
+                    </Dialog.Actions>
+                </Dialog>
+            </Portal>
         );
     }
 
@@ -1165,7 +1189,7 @@ export default function Facturacion({ navigation, route }) {
                 <SeccionCambios />
             </ScrollView>
             <Alerta></Alerta>
-            <ModalNC></ModalNC>
+            {renderModalNC()}
             <ModalImprimir></ModalImprimir>
         </SafeAreaView>
     )
