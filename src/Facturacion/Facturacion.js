@@ -205,47 +205,7 @@ export default function Facturacion({ navigation, route }) {
             setPrecios(aux)
         }
     }
-
-    /*
-    const CalcTotal = (band) => {
-        // Esta función se mantiene para recálculos masivos si cambia el tipo de factura
-        setItemsF(prev => {
-            const recalculated = prev.map(item => {
-                const originalProd = precios.find(p => p[0] === item[0]);
-                if (!originalProd) return item;
-                
-                if (band) { // Con IVA (obtener neto)
-                    let preciu = (parseFloat(originalProd[2]) / (1 + parseFloat(originalProd[3]) / 100)).toFixed(6)
-                    let totalItem = (parseFloat(preciu) * Number(item[1])).toFixed(2)
-                    return [item[0], item[1], preciu, totalItem]
-                } else { // Sin IVA (precio final)
-                    let totalItem = (parseFloat(originalProd[2]) * Number(item[1])).toFixed(2)
-                    return [item[0], item[1], originalProd[2], totalItem]
-                }
-            });
-            return recalculated;
-        });
-        
-
-        setItemsC(prev => {
-            const recalculated = prev.map(item => {
-                const originalProd = precios.find(p => p[0] === item[0]);
-                if (!originalProd) return item;
-                
-                if (band) {
-                    let preciu = (parseFloat(originalProd[2]) / (1 + parseFloat(originalProd[3]) / 100)).toFixed(6)
-                    let totalItem = (parseFloat(preciu) * Number(item[1])).toFixed(2)
-                    return [item[0], item[1], preciu, totalItem]
-                } else {
-                    let totalItem = (parseFloat(originalProd[2]) * Number(item[1])).toFixed(2)
-                    return [item[0], item[1], originalProd[2], totalItem]
-                }
-            });
-            return recalculated;
-        });
-    }*/
-
-    
+   
     const handleDisable = () => {
         if (itemsC.length !== 0) {
             return false
@@ -516,7 +476,7 @@ export default function Facturacion({ navigation, route }) {
                         setVisible(true)
                         MetodoReiniciar();
                         return
-                    } else 
+                    } else
                         if (response.data['error'] == 'Cambios error') {
                             setTitulo('Error')
                             setTexto('Error al registrar los cambios, no seran contabilizados')
@@ -597,18 +557,31 @@ export default function Facturacion({ navigation, route }) {
                                 items: itemsF,
                                 itemsC: itemsC,
                                 NroFactD: NroFact
-                            })
+                        })
                         if (response.data['error'] == 'Exento error') {
                             setTitulo('Error en facturacion')
                             setTexto('No es posible hacer facturas B. Reintente con el cliente correcto.')
                             setVisible(true)
+                            MetodoReiniciar();
                             return
                         }
                         else if (response.data['error'] == 'CAE error') {
                             setTitulo('Error')
+                            setTexto('Error al generar al generar factura en AFIP, reintentar')
+                            setVisible(true)
+                            return
+                        }
+                        else if (response.data['error'] == 'BD error') {
+                            setTitulo('Error')
                             setTexto('LA FACTURA FUE GENERADA, SI NO LA VE EN EL SISTEMA AVISAR A JUAN')
                             setVisible(true)
                             MetodoReiniciar();
+                            return
+                        }
+                        else if (response.data['error'] == 'Error desconocido') {
+                            setTitulo('Error')
+                            setTexto('Error interno del servidor, avisar a administracion')
+                            setVisible(true)
                             return
                         }
                         else {

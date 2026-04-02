@@ -113,7 +113,7 @@ export default function Ranking({ navigation, route }) {
                     
                     <ScrollView horizontal={true} showsHorizontalScrollIndicator={true}>
                         <View>
-                            <DataTable style={[styles.table, { width: 460 }]}>
+                            <DataTable style={[styles.table, { width: 440 }]}>
                                 <DataTable.Header style={styles.tableHeader}>
                                     <DataTable.Title style={styles.widthComp} textStyle={styles.headerText}>Comp.</DataTable.Title>
                                     <DataTable.Title style={styles.widthCliente} textStyle={styles.headerText}>Cliente</DataTable.Title>
@@ -242,11 +242,11 @@ const styles = StyleSheet.create({
         flex: 0,
     },
     widthNro: {
-        width: 60,
+        width: 40,
         flex: 0,
     },
     widthTotal: {
-        width: 120,
+        width: 105,
         flex: 0,
     },
     totalSurface: {

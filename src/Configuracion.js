@@ -96,10 +96,15 @@ export default function Configuracion({ navigation, route }) {
     const [statusConexion, setStatusConexion] = useState('Login..');
 
     // Variables de Impresora
+    // Variables de Impresora
     const BOLD_ON = COMMANDS.TEXT_FORMAT.TXT_BOLD_ON
     const BOLD_OFF = COMMANDS.TEXT_FORMAT.TXT_BOLD_OFF
     const CENTER = COMMANDS.TEXT_FORMAT.TXT_ALIGN_CT
     const LEFT = COMMANDS.TEXT_FORMAT.TXT_ALIGN_LT
+    const DOUBLE_WIDTH_ON = COMMANDS.TEXT_FORMAT.TXT_2WIDTH
+    const NORMAL = COMMANDS.TEXT_FORMAT.TXT_NORMAL
+    const DOUBLE_HEIGHT_ON = COMMANDS.TEXT_FORMAT.TXT_2HEIGHT
+    const HR3_80MM = COMMANDS.HORIZONTAL_LINE.HR3_80MM
     let waitTime = 0.5
 
     // Variables de Alerta
@@ -228,6 +233,9 @@ export default function Configuracion({ navigation, route }) {
     ListarPrinters()
 }, [])
 
+
+
+
 const VerificarConexion = async () => {
     setStatusConexion('Login..');
     try {
@@ -347,78 +355,125 @@ const Reimprimir = async (num = null) => {
     if (await connectPrinter()) {
         try {
             let aux = num || Retext
-            let response = await apiClient.post(`/reImprimir`,
+            if (radioSelect === 99) {
+                let response = await apiClient.post(`/reImprimirPres`,
                 {
                     nro: String(aux),
                     pto: usePtoventa,
                     tipo: radioSelect
                 })
-            if (response.data.length !== 0) {
-                let arrC = response.data[0]
-                let arrP = response.data[1]
-                let arrF = response.data[2]
-               
-                let title = ''
-                if (radioSelect === 1) {
-                    title = 'Cod. 001 - FACTURA A'
-                } else {
-                    title = 'Cod. 003 - NOTA DE CREDITO A'
-                }
+                if (response.data.error !== 'Vacio') {
+                    let arrC = response.data[0]
+                    let arrP = response.data[1]
+                    let arrF = response.data[2]
 
-                Promise.all([
-                    asyncPrintText(`LA PRIMERA SA`, waitTime++),
-                    asyncPrintText('DIRECCION: PELLEGRINI 701', waitTime++),
-                    asyncPrintText('CUIT: 30-67020652-8', waitTime++),
-                    asyncPrintText('INICIO DE ACTIVIDADES: 22/12/1994', waitTime++),
-                    asyncPrintText('IVA RESPONSABLE INSCRIPTO', waitTime++),
-                    //SETEAR SI ES IMPRESORA DE 50 O 80MM
-                    asyncPrintText(
-                        `${CENTER}${COMMANDS.HORIZONTAL_LINE.HR3_80MM}`, waitTime++),
-                    asyncPrintText(`${CENTER}${BOLD_ON}${title}\n${BOLD_OFF}`, waitTime++),
-                    asyncPrintColumnsText(
-                        [`Fecha: ${arrF[0]}`, `Nro: ${arrF[1]}`],
-                        [23, 23],
-                        [ColumnAlignment.LEFT, ColumnAlignment.RIGHT],
-                        ['', ''],
-                        waitTime++,
-                    ),
-                    asyncPrintText(
-                        `${CENTER}${COMMANDS.HORIZONTAL_LINE.HR3_80MM}`, waitTime++),
-                    asyncPrintText(`${LEFT}${arrC[0]}`, waitTime++),
-                    asyncPrintText(`CUIT Nro. ${arrC[1]}`, waitTime++),
-                    asyncPrintText(`IVA ${arrC[3]}`, waitTime++),
-                    asyncPrintText(`${arrC[2]}`, waitTime++),
-                    asyncPrintText(
-                        `${CENTER}${COMMANDS.HORIZONTAL_LINE.HR3_80MM}`, waitTime++),
-                    arrP.forEach(e => {
-                        let totalLength = 48
-                        let spaces = totalLength - e[0].length - e[3].length;
-                        let result = e[0] + ' '.repeat(spaces) + e[3];
-                        asyncPrintText(`${LEFT}${e[1]} X ${e[2]}`, waitTime++),
-                            asyncPrintText(result, waitTime++)
-                    }),
-                    asyncPrintText(
-                        `${CENTER}${COMMANDS.HORIZONTAL_LINE.HR3_80MM}`, waitTime++),
-                    asyncPrintText(`Subtotal: ${arrF[2]}`, waitTime++),
-                    asyncPrintText(`IVA 21%: ${arrF[3]}`, waitTime++),
-                    asyncPrintText(
-                        `${CENTER}${COMMANDS.HORIZONTAL_LINE.HR_80MM}`, waitTime++),
-                    asyncPrintColumnsText(
-                        ['', 'TOTAL $', '', `${arrF[4]}`],
-                        [9, 9, 9, 9],
-                        [ColumnAlignment.LEFT, ColumnAlignment.CENTER, ColumnAlignment.CENTER, ColumnAlignment.RIGHT],
-                        ['', `${BOLD_ON}`, '', ''],
-                        waitTime++,
-                    ),
-                    asyncPrintText(
-                        `${CENTER}${COMMANDS.HORIZONTAL_LINE.HR_80MM}`, waitTime++),
-                    asyncPrintQr(arrF[7], waitTime++),
-                    asyncPrintBill(`${CENTER}CAE: ${arrF[5]}     CAE Vto: ${arrF[6]}`, waitTime++)
-                ])
-                setRetext('')
+                    await Promise.all([
+                        asyncPrintText(`${CENTER}${DOUBLE_WIDTH_ON}${DOUBLE_HEIGHT_ON}${BOLD_ON}${'PRESUPUESTO X'}\n${BOLD_OFF}${NORMAL}`, waitTime++),
+                        asyncPrintText(`${CENTER}${arrF[0]}`, waitTime++),
+                        asyncPrintText(`${CENTER}NRO. ${usePtoventa} - ${arrF[1]}`, waitTime++),
+                        asyncPrintText(`${CENTER}${HR3_80MM}`, waitTime++),
+                        asyncPrintText(`${LEFT}${arrC[0]}`, waitTime++),
+                        asyncPrintText(`${LEFT}${arrC[1]}`, waitTime++),
+                        asyncPrintText(
+                            `${CENTER}${HR3_80MM}`, waitTime++),
+                        arrP.forEach(e => {
+                            let totalLength = 48
+                            let spaces = totalLength - e[0].length - e[3].length;
+                            let result = e[0] + ' '.repeat(spaces) + e[3];
+                            asyncPrintText(`${LEFT}${e[1]} X ${e[2]}`, waitTime++),
+                                asyncPrintText(result, waitTime++)
+                        }),
+                        asyncPrintText(
+                            `${CENTER}${COMMANDS.HORIZONTAL_LINE.HR_80MM}`, waitTime++),
+                        asyncPrintColumnsText(
+                            ['', 'TOTAL $', '', `${arrF[2]}`],
+                            [9, 9, 9, 9],
+                            [ColumnAlignment.LEFT, ColumnAlignment.CENTER, ColumnAlignment.CENTER, ColumnAlignment.RIGHT],
+                            ['', `${BOLD_ON}${DOUBLE_WIDTH_ON}${DOUBLE_HEIGHT_ON}`, '', `${BOLD_ON}${DOUBLE_WIDTH_ON}${DOUBLE_HEIGHT_ON}`],
+                            waitTime++,
+                        ),
+                        asyncPrintBill('', waitTime++)
+                    ])
+                    setRetext('')
+                } else {
+                    setTitulo('Error')
+                    setTexto('No se encontró el presupuesto')
+                    setVisible(true)
+                }
             } else {
-                setTitulo('Comprobante inexistente')
-                setTexto('El comprobante no existe')
+                let response = await apiClient.post(`/reImprimir`,
+                {
+                    nro: String(aux),
+                    pto: usePtoventa,
+                    tipo: radioSelect
+                })
+                if (response.data.error !== 'Vacio') {
+                    let arrC = response.data[0]
+                    let arrP = response.data[1]
+                    let arrF = response.data[2]
+                
+                    let title = ''
+                    if (radioSelect === 1) {
+                        title = 'Cod. 001 - FACTURA A'
+                    } else {
+                        title = 'Cod. 003 - NOTA DE CREDITO A'
+                    }
+
+                    Promise.all([
+                        asyncPrintText(`LA PRIMERA SA`, waitTime++),
+                        asyncPrintText('DIRECCION: PELLEGRINI 701', waitTime++),
+                        asyncPrintText('CUIT: 30-67020652-8', waitTime++),
+                        asyncPrintText('INICIO DE ACTIVIDADES: 22/12/1994', waitTime++),
+                        asyncPrintText('IVA RESPONSABLE INSCRIPTO', waitTime++),
+                        //SETEAR SI ES IMPRESORA DE 50 O 80MM
+                        asyncPrintText(
+                            `${CENTER}${COMMANDS.HORIZONTAL_LINE.HR3_80MM}`, waitTime++),
+                        asyncPrintText(`${CENTER}${BOLD_ON}${title}\n${BOLD_OFF}`, waitTime++),
+                        asyncPrintColumnsText(
+                            [`Fecha: ${arrF[0]}`, `Nro: ${arrF[1]}`],
+                            [23, 23],
+                            [ColumnAlignment.LEFT, ColumnAlignment.RIGHT],
+                            ['', ''],
+                            waitTime++,
+                        ),
+                        asyncPrintText(
+                            `${CENTER}${COMMANDS.HORIZONTAL_LINE.HR3_80MM}`, waitTime++),
+                        asyncPrintText(`${LEFT}${arrC[0]}`, waitTime++),
+                        asyncPrintText(`CUIT Nro. ${arrC[1]}`, waitTime++),
+                        asyncPrintText(`IVA ${arrC[3]}`, waitTime++),
+                        asyncPrintText(`${arrC[2]}`, waitTime++),
+                        asyncPrintText(
+                            `${CENTER}${COMMANDS.HORIZONTAL_LINE.HR3_80MM}`, waitTime++),
+                        arrP.forEach(e => {
+                            let totalLength = 48
+                            let spaces = totalLength - e[0].length - e[3].length;
+                            let result = e[0] + ' '.repeat(spaces) + e[3];
+                            asyncPrintText(`${LEFT}${e[1]} X ${e[2]}`, waitTime++),
+                                asyncPrintText(result, waitTime++)
+                        }),
+                        asyncPrintText(
+                            `${CENTER}${COMMANDS.HORIZONTAL_LINE.HR3_80MM}`, waitTime++),
+                        asyncPrintText(`Subtotal: ${arrF[2]}`, waitTime++),
+                        asyncPrintText(`IVA 21%: ${arrF[3]}`, waitTime++),
+                        asyncPrintText(
+                            `${CENTER}${COMMANDS.HORIZONTAL_LINE.HR_80MM}`, waitTime++),
+                        asyncPrintColumnsText(
+                            ['', 'TOTAL $', '', `${arrF[4]}`],
+                            [9, 9, 9, 9],
+                            [ColumnAlignment.LEFT, ColumnAlignment.CENTER, ColumnAlignment.CENTER, ColumnAlignment.RIGHT],
+                            ['', `${BOLD_ON}`, '', ''],
+                            waitTime++,
+                        ),
+                        asyncPrintText(
+                            `${CENTER}${COMMANDS.HORIZONTAL_LINE.HR_80MM}`, waitTime++),
+                        asyncPrintQr(arrF[7], waitTime++),
+                        asyncPrintBill(`${CENTER}CAE: ${arrF[5]}     CAE Vto: ${arrF[6]}`, waitTime++)
+                    ])
+                    setRetext('')
+                } else {
+                    setTitulo('Comprobante inexistente')
+                    setTexto('El comprobante no existe')
+                }
             }
         }
         catch (error) {
@@ -560,25 +615,32 @@ function Impresora() {
 
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Text variant="labelLarge">Reimprimir Facturas</Text>
-                    <Button onPress={UltimoFactura}>Imprimir ultimo</Button>
+                    <Button disabled={radioSelect === 99} onPress={UltimoFactura}>Imprimir ultimo</Button>
                 </View>
                 
-                <RadioButton.Group onValueChange={newValue => setRadioSelect(newValue)} value={radioSelect}>
-                    <View style={styles.radioGroup}>
-                        <TouchableRipple onPress={() => setRadioSelect(1)} style={styles.radioOption}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                <RadioButton value={1} color="#663399" />
-                                <Text variant="bodyMedium">Factura A</Text>
-                            </View>
-                        </TouchableRipple>
-                        <TouchableRipple onPress={() => setRadioSelect(3)} style={styles.radioOption}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                <RadioButton value={3} color="#663399" />
-                                <Text variant="bodyMedium">Nota Cred. A</Text>
-                            </View>
-                        </TouchableRipple>
-                    </View>
-                </RadioButton.Group>
+                <SegmentedButtons
+                    value={radioSelect}
+                    onValueChange={setRadioSelect}
+                    style={{ marginBottom: 20 }}
+                    theme={{ colors: { secondaryContainer: '#f3e5f5' } }}
+                    buttons={[
+                        {
+                            value: 1,
+                            label: 'Factura A',
+                            icon: 'file-document-outline',
+                        },
+                        {
+                            value: 3,
+                            label: 'Nota Cred. A',
+                            icon: 'file-undo-outline',
+                        },
+                        {
+                            value: 99,
+                            label: 'Presup.',
+                            icon: 'file-hidden',
+                        },
+                    ]}
+                />
                 
                 <View style={styles.inputActionRow}>
                     <View style={{ flex: 1, marginRight: 8 }}>
