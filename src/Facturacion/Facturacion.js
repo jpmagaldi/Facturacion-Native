@@ -890,8 +890,7 @@ export default function Facturacion({ navigation, route }) {
         }
     
     }
-        
-    
+ 
     const SeccionItems = () => (
         <Surface style={styles.surfaceCard} elevation={2}>
             <View style={styles.cardHeaderRow}>
@@ -1011,12 +1010,14 @@ export default function Facturacion({ navigation, route }) {
                         <Text variant="bodyMedium" style={{ textAlign: 'center', color: '#666', marginBottom: 24, paddingHorizontal: 10 }}>
                             Para emitir una Nota de Crédito, es necesario referenciar la factura original.
                         </Text>
-                        
+                        <Text variant="bodyMedium" style={{ textAlign: 'center', color: '#666', marginBottom: 24, paddingHorizontal: 10 }}>
+                            INGRESAR EL NUMERO DE FACTURA SIN CEROS
+                        </Text>
                         <View style={{ gap: 16 }}>
                             <TextInput
                                 mode="outlined"
                                 label="Número de Factura"
-                                placeholder="Ej: 0001-00000123"
+                                placeholder="Ej: 6123"
                                 value={NroFact}
                                 keyboardType='numeric'
                                 onChangeText={setNroFact}

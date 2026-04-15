@@ -21,7 +21,7 @@ logger.setLevel(logging.DEBUG)
 DATE = datetime.now().strftime("%Y%m%d")
 DATE1 = datetime.now().strftime("%Y-%m-%d")
 
-base_dir = Path.home() / 'La Primera Software'
+base_dir = Path.home() / 'La_Primera_Software'
 base_dir.mkdir(parents=True, exist_ok=True)
 
 
@@ -48,15 +48,13 @@ def CrearLogs(self):
 URL_QR = "https://www.afip.gob.ar/fe/qr/"
 
 
-#connection = None
-#WSAa = WSAA()
-#WSFEv1_api = WSFEv1()
 CUIT = None
-Produccion = True 
+Produccion = False
 
 
 class ConnectionManager:
 	def __init__(self):
+		global CUIT
 		self.db = None
 		self.wsaa = WSAA()
 		self.wsfe = WSFEv1()
@@ -84,8 +82,8 @@ class ConnectionManager:
 			if self.db is None or not self.db.is_connected():
 				print("DB: Conectando...")
 				self.db = mysql.connector.connect(
-					#host='192.168.0.142', password='ventas', user='ventas',
-					host='127.0.0.1', port=3306, user='root', password='1234',
+					host='192.168.0.142', password='ventas', user='ventas',
+					#host='127.0.0.1', port=3306, user='root', password='1234',
 					database='negocio', connection_timeout=5
 				)
 				self.db.autocommit = False
@@ -227,9 +225,11 @@ def facturacion():
 
 		# Calculos de neto e iva
 		neto = round(total / 1.21, 2)
-		iva = round(total - neto, 2)
+		iva = '{:.2f}'.format(round(total - neto, 2))
+		neto = '{:.2f}'.format(neto)
+		total = '{:.2f}'.format(total)
 
-		# Generamos el CAE
+	# Generamos el CAE
 		try:
 			cae, cae_vto, comp, err, obs = generarCAE(
 				Cuitcliente, tipo, NroFact, NroFactD, 
@@ -245,7 +245,9 @@ def facturacion():
 
 		
 		# Generamos el QR para la factura
-		cuerpo = f'{{"ver":1,"fecha":"{DATE}","cuit":{CUIT},"ptoVta":{PtoVta},"tipoCmp":{tipo},"nroCmp":{NroFact},"importe":{int(total)},"moneda":"PES","ctz":1,"tipoDocRec":80,"nroDocRec":{int(Cuitcliente)},"tipoCodAut":"E","codAut":{cae}}}'
+		FormatTotal = total.replace('.','')
+
+		cuerpo = f'{{"ver":1,"fecha":"{DATE1}","cuit":{CUIT},"ptoVta":{PtoVta},"tipoCmp":{tipo},"nroCmp":{NroFact},"importe":{FormatTotal},"moneda":"PES","ctz":1,"tipoDocRec":80,"nroDocRec":{int(Cuitcliente)},"tipoCodAut":"E","codAut":{cae}}}'
 		to_qrurl = URL_QR + "?p=" + base64.b64encode(cuerpo.encode()).decode()
 		
 		qr_obj = qrcode.QRCode(
@@ -263,7 +265,7 @@ def facturacion():
 		qr_base64 = base64.b64encode(buf.getvalue()).decode()
 
 		fecha_vto = f"{cae_vto[6:8]}/{cae_vto[4:6]}/{cae_vto[0:4]}"
-
+		
 		return jsonify({"error": None, "qr_base64": qr_base64, "cae": cae, "fecha_vto": fecha_vto, "neto": neto, "iva": iva})
 	except Exception as e:
 		CrearLogs(e)
@@ -281,7 +283,7 @@ def generarCAE(Cuitcliente, tipo, NroFact, NroFactD,
 
 		if tipo == 3:
 			comp = "Ncred. A"
-			WSFEv1.AgregarCmpAsoc(pto_vta=PtoVta, nro=NroFactD)
+			manager.wsfe.AgregarCmpAsoc(pto_vta=PtoVta, nro=NroFactD)
 		else:
 			comp = "Fact.A"
 
@@ -870,21 +872,52 @@ def buscar_productos():
 
 
 
+
+@app.route('/getProductosStock', methods=['GET'])
+def getProductosStock():
+	try:
+		db = manager.get_db()
+		with db.cursor(dictionary=True) as cursor:
+			qry = "SELECT ID, Nombre, Imagen, Cantidad FROM negocio.productostock ORDER BY Nombre"
+			cursor.execute(qry)
+			rows = cursor.fetchall()
+			arr = []
+			for row in rows:
+				arr.append([
+					row["ID"],
+					row["Nombre"],
+					row["Imagen"],
+					row["Cantidad"],
+				])
+
+		return jsonify({'error': None, 'items': arr})
+	except Exception as e:
+		CrearLogs(e)
+		return jsonify({'error': 'Error interno del servidor'})
+
+
+
+
+
+
+
+
+
+
 if __name__ == "__main__":
-	while True:
-		try:
-			print(f"[{datetime.now().strftime('%H:%M:%S')}] Iniciando conexión...")
-			manager.get_db()
-			manager.init_afip()
-			print(f"[{datetime.now().strftime('%H:%M:%S')}] Servidor lanzado en el puerto 5000...")
-			#app.run(host='0.0.0.0', port=5000, debug=True) #Para testing
-			serve(app, host='0.0.0.0', port=5000) #Para produccion
-		except KeyboardInterrupt:
-			print("\nServidor detenido manualmente por el usuario.")
-			break
-		except Exception as e:
-			print(f"[{datetime.now().strftime('%H:%M:%S')}] Error crítico en el servidor: {e}")
-			CrearLogs(e)
-			print("Reiniciando servidor en 5 segundos...")
-			time.sleep(5)
+	#while True:
+	try:
+		print(f"[{datetime.now().strftime('%H:%M:%S')}] Iniciando conexión...")
+		manager.get_db()
+		manager.init_afip()
+		app.run(host='0.0.0.0', port=5000, debug=True) #Para testing
+		#serve(app, host='0.0.0.0', port=5000) #Para produccion
+	except KeyboardInterrupt:
+		print("\nServidor detenido manualmente por el usuario.")
+		#break
+	except Exception as e:
+		print(f"[{datetime.now().strftime('%H:%M:%S')}] Error crítico en el servidor: {e}")
+		CrearLogs(e)
+		print("Reiniciando servidor en 5 segundos...")
+		time.sleep(5)
 
