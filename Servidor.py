@@ -49,7 +49,7 @@ URL_QR = "https://www.afip.gob.ar/fe/qr/"
 
 
 CUIT = None
-Produccion = False
+Produccion = True
 
 
 class ConnectionManager:
@@ -82,8 +82,8 @@ class ConnectionManager:
 			if self.db is None or not self.db.is_connected():
 				print("DB: Conectando...")
 				self.db = mysql.connector.connect(
-					host='192.168.0.142', password='ventas', user='ventas',
-					#host='127.0.0.1', port=3306, user='root', password='1234',
+					#host='192.168.0.142', password='ventas', user='ventas',
+					host='127.0.0.1', port=3306, user='root', password='1234',
 					database='negocio', connection_timeout=5
 				)
 				self.db.autocommit = False
@@ -469,6 +469,7 @@ def rankingFact():
 		PtoVta = request.json.get('PtoVta')
 		Fecha = request.json.get('Fecha')
 		db = manager.get_db()
+		
 		with db.cursor(dictionary=True) as cursor:
 			db.rollback()
 			Query = "SELECT SUBSTRING(c.RazonS,1,26), Comprobante,N_fact,Total FROM negocio.ventas as v INNER JOIN negocio.clientes as c \
@@ -703,6 +704,7 @@ def reimprimir():
 
 		db = manager.get_db()			
 		with db.cursor(dictionary=True) as cursor:
+			db.rollback()
 			qry = "SELECT * FROM negocio.ventas WHERE N_fact LIKE '%s-%s' AND Comprobante LIKE '%s'" % (pto.zfill(4), nro.zfill(8), tipo)
 			cursor.execute(qry)
 			rowF = cursor.fetchone()
@@ -813,6 +815,7 @@ def buscar_cliente():
 	try:
 		db = manager.get_db()
 		with db.cursor(dictionary=True) as cursor:
+			db.rollback()
 			qry = """
 				SELECT RazonS, Alias, Cuit, Direccion, Responsabilidad, Lista,
 					Descuento, Recargo, Duplicado
@@ -877,17 +880,19 @@ def buscar_productos():
 def getProductosStock():
 	try:
 		db = manager.get_db()
+		db.rollback()
 		with db.cursor(dictionary=True) as cursor:
-			qry = "SELECT ID, Nombre, Imagen, Cantidad FROM negocio.productostock ORDER BY Nombre"
+			qry = "SELECT Barcode, Nombre, Imagen, Cantidad, Categoria FROM negocio.productostock ORDER BY Nombre"
 			cursor.execute(qry)
 			rows = cursor.fetchall()
 			arr = []
 			for row in rows:
 				arr.append([
-					row["ID"],
+					row["Barcode"],
 					row["Nombre"],
 					row["Imagen"],
 					row["Cantidad"],
+					row["Categoria"],
 				])
 
 		return jsonify({'error': None, 'items': arr})
@@ -896,28 +901,38 @@ def getProductosStock():
 		return jsonify({'error': 'Error interno del servidor'})
 
 
-
-
-
-
+@app.route('/descontarStock', methods=['POST'])
+def descontarStock():
+	try:
+		id = request.json.get('id')
+		cantidad = request.json.get('cantidad')
+		print(id, cantidad)
+		db = manager.get_db()
+		with db.cursor(dictionary=True) as cursor:
+			qry = "UPDATE negocio.productostock SET Cantidad = %s WHERE Barcode = '%s'" % (cantidad, id)
+			cursor.execute(qry)
+			db.commit()
+			return jsonify({'error': None})
+	except:
+		return jsonify({'error': 'Error'})
 
 
 
 
 if __name__ == "__main__":
-	#while True:
-	try:
-		print(f"[{datetime.now().strftime('%H:%M:%S')}] Iniciando conexión...")
-		manager.get_db()
-		manager.init_afip()
-		app.run(host='0.0.0.0', port=5000, debug=True) #Para testing
-		#serve(app, host='0.0.0.0', port=5000) #Para produccion
-	except KeyboardInterrupt:
-		print("\nServidor detenido manualmente por el usuario.")
-		#break
-	except Exception as e:
-		print(f"[{datetime.now().strftime('%H:%M:%S')}] Error crítico en el servidor: {e}")
-		CrearLogs(e)
-		print("Reiniciando servidor en 5 segundos...")
-		time.sleep(5)
+	while True:
+		try:
+			print(f"[{datetime.now().strftime('%H:%M:%S')}] Iniciando conexión...")
+			manager.get_db()
+			manager.init_afip()
+			#app.run(host='0.0.0.0', port=5000, debug=True) #Para testing
+			serve(app, host='0.0.0.0', port=5000) #Para produccion
+		except KeyboardInterrupt:
+			print("\nServidor detenido manualmente por el usuario.")
+			#break
+		except Exception as e:
+			print(f"[{datetime.now().strftime('%H:%M:%S')}] Error crítico en el servidor: {e}")
+			CrearLogs(e)
+			print("Reiniciando servidor en 5 segundos...")
+			time.sleep(5)
 
