@@ -82,8 +82,8 @@ class ConnectionManager:
 			if self.db is None or not self.db.is_connected():
 				print("DB: Conectando...")
 				self.db = mysql.connector.connect(
-					#host='192.168.0.142', password='ventas', user='ventas',
-					host='127.0.0.1', port=3306, user='root', password='1234',
+					host='192.168.0.142', password='ventas', user='ventas',
+					#host='127.0.0.1', port=3306, user='root', password='1234',
 					database='negocio', connection_timeout=5
 				)
 				self.db.autocommit = False
@@ -882,7 +882,7 @@ def getProductosStock():
 		db = manager.get_db()
 		db.rollback()
 		with db.cursor(dictionary=True) as cursor:
-			qry = "SELECT Barcode, Nombre, Imagen, Cantidad, Categoria FROM negocio.productostock ORDER BY Nombre"
+			qry = "SELECT Barcode, Nombre, Imagen, Cantidad, Categoria, Medida FROM negocio.productostock ORDER BY Nombre"
 			cursor.execute(qry)
 			rows = cursor.fetchall()
 			arr = []
@@ -893,6 +893,7 @@ def getProductosStock():
 					row["Imagen"],
 					row["Cantidad"],
 					row["Categoria"],
+					row["Medida"],
 				])
 
 		return jsonify({'error': None, 'items': arr})
@@ -920,19 +921,19 @@ def descontarStock():
 
 
 if __name__ == "__main__":
-	while True:
-		try:
-			print(f"[{datetime.now().strftime('%H:%M:%S')}] Iniciando conexión...")
-			manager.get_db()
-			manager.init_afip()
-			#app.run(host='0.0.0.0', port=5000, debug=True) #Para testing
-			serve(app, host='0.0.0.0', port=5000) #Para produccion
-		except KeyboardInterrupt:
-			print("\nServidor detenido manualmente por el usuario.")
-			#break
-		except Exception as e:
-			print(f"[{datetime.now().strftime('%H:%M:%S')}] Error crítico en el servidor: {e}")
-			CrearLogs(e)
-			print("Reiniciando servidor en 5 segundos...")
-			time.sleep(5)
+	#while True:
+	try:
+		print(f"[{datetime.now().strftime('%H:%M:%S')}] Iniciando conexión...")
+		manager.get_db()
+		manager.init_afip()
+		app.run(host='0.0.0.0', port=5000, debug=True) #Para testing
+		#serve(app, host='0.0.0.0', port=5000) #Para produccion
+	except KeyboardInterrupt:
+		print("\nServidor detenido manualmente por el usuario.")
+		#break
+	except Exception as e:
+		print(f"[{datetime.now().strftime('%H:%M:%S')}] Error crítico en el servidor: {e}")
+		CrearLogs(e)
+		print("Reiniciando servidor en 5 segundos...")
+		time.sleep(5)
 
