@@ -121,7 +121,14 @@ export default function Stock({ navigation, route }) {
         <Surface style={styles.tableSurface} elevation={1}>
             <View style={styles.sectionHeader}>
                 <Icon source={icono} size={24} color="#663399" />
-                <Text variant="titleMedium" style={styles.sectionTitle}>{titulo}</Text>
+                <View style={{ flex: 1 }}>
+                    <Text variant="titleMedium" style={styles.sectionTitle}>{titulo}</Text>
+                    <Text variant="bodySmall" style={{ color: '#888', fontStyle: 'italic', marginTop: 2 }}>Deslizar a la izquierda la tabla para ver cambios</Text>
+                </View>
+                <View style={styles.scrollIndicatorBadge}> 
+                    <Icon source="arrow-left-bold" size={14} color="#663399" />
+                    <Text style={styles.scrollIndicatorText}>Deslizar</Text>
+                </View>
             </View>
             
             <ScrollView horizontal={true} showsHorizontalScrollIndicator={true}>
@@ -445,5 +452,19 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         height: 50,
         paddingHorizontal: 0,
+    },
+    scrollIndicatorBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f3e5f5',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        gap: 4,
+    },
+    scrollIndicatorText: {
+        fontSize: 11,
+        color: '#663399',
+        fontWeight: 'bold',
     },
 });
