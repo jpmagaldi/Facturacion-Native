@@ -515,9 +515,15 @@ export default function Facturacion({ navigation, route }) {
                             items: itemsF,
                             itemsC: itemsC
                         })
+                        const itemsFConIVA = itemsF.map(e => {
+                            const precioConIVA = (parseFloat(e[2]) * 1.21).toFixed(6);
+                            const totalConIVA = (parseFloat(precioConIVA) * Number(e[1])).toFixed(2);
+                            return [e[0], e[1], precioConIVA, totalConIVA];
+                        });
+                        console.log(itemsFConIVA)
                         if (response.data['error'] == null) {
                             setPreImprimir([tipo, usePtoventa,
-                                String(factura), String(fecha), cliente, itemsF, total])
+                                String(factura), String(fecha), cliente, itemsFConIVA, total])
                             setVisibleImprimir(true)
                             return
                         }

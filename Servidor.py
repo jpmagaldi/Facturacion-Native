@@ -1,3 +1,4 @@
+from asyncio import exceptions
 import logging
 import sys, os
 import time
@@ -107,6 +108,7 @@ class ConnectionManager:
 			return False
 		except Exception as e:
 			CrearLogs(e)
+			print(e)
 			return False
 
 manager = ConnectionManager()
@@ -115,6 +117,16 @@ manager = ConnectionManager()
 
 # ------- APP FLASK -------
 app = Flask(__name__)
+
+API_KEY = "MGTGuXnT8VNcpVgtKtsuzb2MijdaorJJUzu5rl5O2bTZcz3vHrhsulKaKlhXdINyegpcSSpY8qb33QzUgKrlioWZDgukvdrFXHqxnnlENtIxbyl3vxnwtqm02Qk4cwvP"
+
+@app.before_request
+def verificar_api_key():
+	if request.method == "OPTIONS":
+		return
+	api_key_recibida = request.headers.get("X-API-Key")
+	if api_key_recibida != API_KEY:
+		return jsonify({"error": "Unauthorized"}), 401
 
 
 # ------- METODOS GENERALES -------
@@ -140,6 +152,7 @@ def get_last_voucher():
 				return jsonify(int(factura) + 1)
 			except Exception as e:
 				CrearLogs(e)
+				print(e)
 				return jsonify(None)
 		else:
 			db = manager.get_db()
@@ -150,6 +163,7 @@ def get_last_voucher():
 				return jsonify(int(row["Numero"]) + 1)
 	except Exception as e:
 		CrearLogs(e)
+		print(e)
 		return jsonify(None)
 
 @app.route("/getVoucher", methods=["POST"])
@@ -231,10 +245,16 @@ def facturacion():
 
 	# Generamos el CAE
 		try:
-			cae, cae_vto, comp, err, obs = generarCAE(
-				Cuitcliente, tipo, NroFact, NroFactD, 
-				DATE, PtoVta, total, neto, iva
-			)
+			try:
+				cae, cae_vto, comp, err, obs = generarCAE(
+					Cuitcliente, tipo, NroFact, NroFactD, 
+					DATE, PtoVta, total, neto, iva
+				)
+			except:
+				cae, cae_vto, comp, err, obs = generarCAE(
+					Cuitcliente, tipo, NroFact, NroFactD, 
+					DATE, PtoVta, total, neto, iva
+				)
 		except Exception as e:
 			CrearLogs(e)
 			return jsonify({"error": "CAE error"})
@@ -289,6 +309,22 @@ def generarCAE(Cuitcliente, tipo, NroFact, NroFactD,
 
 		cae = manager.wsfe.CAESolicitar()
 		cae_vto = manager.wsfe.Vencimiento
+		'''
+		if manager.wsfe.ErrMsg:
+			manager.wsfe.CrearFactura(
+				concepto=1, tipo_doc=80, nro_doc=Cuitcliente, tipo_cbte=tipo,
+				cbt_desde=NroFact , cbt_hasta=NroFact, fecha_cbte=date,
+				punto_vta=PtoVta, cbte_nro=NroFact, imp_total=total, imp_tot_conc=0.00, 
+				imp_neto=neto, imp_iva=iva, condicion_iva_receptor_id=1
+			)
+			manager.wsfe.AgregarIva(5, neto, iva)
+
+			if tipo == 3:
+				manager.wsfe.AgregarCmpAsoc(pto_vta=PtoVta, nro=NroFactD)
+
+			cae = manager.wsfe.CAESolicitar()
+			cae_vto = manager.wsfe.Vencimiento
+		'''
 		return [cae, cae_vto, comp, manager.wsfe.ErrMsg, manager.wsfe.Obs]
 
 def InsertFacturaBD(date, comp, formatfact, cliente, 
@@ -442,7 +478,6 @@ def InsertCambios(itemsC, cliente, date):
 		return False
 
 # --------------
-
 
 @app.route('/listaPrecios', methods=['POST'])
 def lista_precios():
@@ -685,8 +720,90 @@ def searchNegocio():
 
 # --------------
 
+@app.route('/searchDetalleFactura', methods=['POST'])
+def searchDetFact():
+	try:
+		nro = request.json.get('nro')
+		pto = request.json.get('pto')
+		tipo = request.json.get('tipo')  # 'Presu.', 'Fact.A' o 'Ncred. A'
+		db = manager.get_db()
+		with db.cursor(dictionary=True) as cursor:
+			db.rollback()
+			if tipo == 'Presu.':
+				qry = "SELECT * FROM negocio.presupuestos WHERE N_Presu LIKE '%s-%s'" % (pto.zfill(4), nro.zfill(8))
+				cursor.execute(qry)
+				rowF = cursor.fetchone()
+
+				if not rowF:
+					return jsonify({'error': 'Vacio'})
+
+				cliente_qry = "SELECT * FROM camioneta.clientes WHERE Cuit LIKE '%s'" % rowF['Cuit']
+				cursor.execute(cliente_qry)
+				cliente = cursor.fetchone()
+
+				productos_qry = "SELECT * FROM negocio.presu_productos WHERE N_pres LIKE '%s-%s'" % (pto.zfill(4), nro.zfill(8))
+				cursor.execute(productos_qry)
+				productos = cursor.fetchall()
+
+				arrC = [cliente["RazonS"], cliente["Cuit"]]
+				arrF = [rowF['Fecha'].strftime("%d/%m/%Y"), rowF['N_Presu'], rowF['Total']]
+				arrP = []
+				for row in productos:
+					arrP.append([
+						row["Producto"],
+						row["Cantidad"],
+						row["Precio_U"],
+						row["Total"],
+						row["Cambio"]
+					])
+			else:
+				qry = "SELECT * FROM negocio.ventas WHERE N_fact LIKE '%s-%s' AND Comprobante LIKE '%s'" % (pto.zfill(4), nro.zfill(8), tipo)
+				cursor.execute(qry)
+				rowF = cursor.fetchone()
+
+				if not rowF:
+					return jsonify({'error': 'Vacio'})
+
+				cliente_qry = "SELECT * FROM camioneta.clientes WHERE Cuit LIKE '%s'" % rowF['Cuit']
+				cursor.execute(cliente_qry)
+				cliente = cursor.fetchone()
+
+				productos_qry = "SELECT * FROM negocio.venta_productos WHERE N_fact LIKE '%s-%s' AND Comprobante LIKE '%s'" % (pto.zfill(4), nro.zfill(8), tipo)
+				cursor.execute(productos_qry)
+				productos = cursor.fetchall()
+
+				try:
+					if tipo == 'Fact.A':
+						manager.wsfe.CompConsultar(1, pto, nro)
+					else:
+						manager.wsfe.CompConsultar(3, pto, nro)
+					cae = manager.wsfe.CAE
+					vto = manager.wsfe.Vencimiento[-2:] + '/' + manager.wsfe.Vencimiento[-4:-2] + '/' + manager.wsfe.Vencimiento[:4]
+				except Exception as e:
+					print(e)
+					cae = 'Error'
+					vto = 'Error'
+
+				arrC = [cliente["RazonS"], cliente["Cuit"], cliente["Direccion"], cliente["Responsabilidad"]]
+				arrF = [rowF['Fecha'].strftime("%d/%m/%Y"), rowF['N_fact'], rowF['Pan21'], rowF['Iva21'], rowF['Total'], cae, vto]
+				arrP = []
+				for row in productos:
+					arrP.append([
+						row["Producto"],
+						row["Cantidad"],
+						row["Precio_U"],
+						row["Total"],
+						row["Cambio"]
+					])
+		return jsonify(arrC, arrP, arrF)
+	except Exception as e:
+		CrearLogs(e)
+		return jsonify({'error': 'Error interno del servidor'})
+
+# --------------
+
 @app.route('/reImprimir', methods=['POST'])
-def reimprimir():
+def reimprimir(band=False):
 	try:
 		nro = request.json.get('nro')
 		pto = request.json.get('pto')
@@ -714,7 +831,8 @@ def reimprimir():
 				cursor.execute(cliente)
 				cliente = cursor.fetchone()
 
-				productos = "SELECT * FROM negocio.venta_productos WHERE N_fact LIKE '%s-%s' AND Comprobante LIKE '%s'" % (pto.zfill(4), nro.zfill(8), tipo)
+				productos = "SELECT * FROM negocio.venta_productos WHERE N_fact LIKE '%s-%s'\
+					AND Comprobante LIKE '%s' AND Cantidad NOT LIKE '0'" % (pto.zfill(4), nro.zfill(8), tipo)
 				cursor.execute(productos)
 				productos = cursor.fetchall()
 			else:
@@ -808,6 +926,28 @@ def reImprimirPres():
 	except Exception as e:
 		CrearLogs(e)
 		return jsonify({'error': 'Error interno del servidor'})
+# --------------
+
+@app.route('/eliminarPresupuesto', methods=['POST'])
+def eliminar_presupuesto():
+	db = None
+	try:
+		nro = request.json.get('nro')
+		pto = request.json.get('pto')
+		fact = f"{str(pto).zfill(4)}-{str(nro).zfill(8)}"
+
+		db = manager.get_db()
+		with db.cursor(dictionary=True) as cursor:
+			cursor.execute("DELETE FROM negocio.presu_productos WHERE N_pres = %s", (fact,))
+			cursor.execute("DELETE FROM negocio.presupuestos WHERE N_Presu = %s", (fact,))
+			db.commit()
+		return jsonify({'error': None})
+	except Exception as e:
+		CrearLogs(e)
+		if db:
+			db.rollback()
+		return jsonify({'error': 'Error al eliminar el presupuesto'})
+
 # --------------
 
 @app.route('/buscarCliente', methods=['GET'])
@@ -921,19 +1061,19 @@ def descontarStock():
 
 
 if __name__ == "__main__":
-	#while True:
-	try:
-		print(f"[{datetime.now().strftime('%H:%M:%S')}] Iniciando conexión...")
-		manager.get_db()
-		manager.init_afip()
-		app.run(host='0.0.0.0', port=5000, debug=True) #Para testing
-		#serve(app, host='0.0.0.0', port=5000) #Para produccion
-	except KeyboardInterrupt:
-		print("\nServidor detenido manualmente por el usuario.")
-		#break
-	except Exception as e:
-		print(f"[{datetime.now().strftime('%H:%M:%S')}] Error crítico en el servidor: {e}")
-		CrearLogs(e)
-		print("Reiniciando servidor en 5 segundos...")
-		time.sleep(5)
+	while True:
+		try:
+			print(f"[{datetime.now().strftime('%H:%M:%S')}] Iniciando conexión...")
+			manager.get_db()
+			manager.init_afip()
+			app.run(host='0.0.0.0', port=5001, debug=True) #Para testing
+			#serve(app, host='0.0.0.0', port=5000) #Para produccion
+		except KeyboardInterrupt:
+			print("\nServidor detenido manualmente por el usuario.")
+			break
+		except Exception as e:
+			print(f"[{datetime.now().strftime('%H:%M:%S')}] Error crítico en el servidor: {e}")
+			CrearLogs(e)
+			print("Reiniciando servidor en 5 segundos...")
+			time.sleep(5)
 

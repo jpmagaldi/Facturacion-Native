@@ -123,7 +123,7 @@ export default function Stock({ navigation, route }) {
                 <Icon source={icono} size={24} color="#663399" />
                 <View style={{ flex: 1 }}>
                     <Text variant="titleMedium" style={styles.sectionTitle}>{titulo}</Text>
-                    <Text variant="bodySmall" style={{ color: '#888', fontStyle: 'italic', marginTop: 2 }}>Deslizar a la izquierda la tabla para ver cambios</Text>
+                    <Text variant="bodySmall" style={{ color: '#888', fontStyle: 'italic', marginTop: 2 }}>Deslizar para ver cambios</Text>
                 </View>
                 <View style={styles.scrollIndicatorBadge}> 
                     <Icon source="arrow-left-bold" size={14} color="#663399" />

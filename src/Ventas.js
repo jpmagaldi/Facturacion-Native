@@ -32,12 +32,6 @@ export default function Ranking({ navigation, route }) {
     const [invoiceDetails, setInvoiceDetails] = useState(null);
     const [modalError, setModalError] = useState(null);
 
-    useEffect(() => {
-        if (invoiceDetails && invoiceDetails.productos) {
-            console.log(invoiceDetails.productos)
-        }
-    }, []);
-
     const handleRowLongPress = async (item) => {
         setSelectedItem(item);
         setModalVisible(true);
@@ -46,11 +40,21 @@ export default function Ranking({ navigation, route }) {
         setInvoiceDetails(null);
 
         try {
-            const response = await apiClient.post('/searchDetalleFactura', {
-                nro: String(item.nro),
-                pto: usePtoventa,
-                tipo: item.tipo
-            });
+            let response;
+            if (item.tipo === 'Presu.') {
+                response = await apiClient.post('/reImprimirPres', {
+                    nro: String(item.nro),
+                    pto: usePtoventa
+                });
+            } else {
+                const apiTipo = item.tipo === 'Fact.A' ? 1 : 3;
+                response = await apiClient.post('/reImprimir', {
+                    nro: String(item.nro),
+                    pto: usePtoventa,
+                    tipo: apiTipo
+                });
+            }
+
             if (response.data && response.data.error === 'Vacio') {
                 setModalError('No se encontró el detalle del comprobante.');
             } else if (response.data && response.data.error) {
@@ -179,20 +183,14 @@ export default function Ranking({ navigation, route }) {
                                                     <Text style={[styles.productCell, styles.cellDetalle]}>
                                                         {prod[0]}
                                                     </Text>
-                                                    {parseFloat(prod[1]) !== 0 ?
-                                                        <Text style={[styles.productCell, styles.cellPrecio, { textAlign: 'right' }]}>
-                                                            {`$${parseFloat(prod[2]).toFixed(2)}`}
-                                                        </Text>
-                                                    :
-                                                        <Text style={[styles.productCell, styles.cellPrecio, { textAlign: 'right' }]}>
-                                                            {'-'}
-                                                        </Text>
-                                                    }
+                                                    <Text style={[styles.productCell, styles.cellPrecio, { textAlign: 'right' }]}>
+                                                        ${parseFloat(prod[2]).toFixed(2)}
+                                                    </Text>
                                                     <Text style={[styles.productCell, styles.cellCambio, { textAlign: 'right' }]}>
                                                         {prod[4] ? parseFloat(prod[4]) : 0}
                                                     </Text>
                                                     <Text style={[styles.productCell, styles.cellTotal, { textAlign: 'right', fontWeight: 'bold' }]}>
-                                                        {parseFloat(prod[3]) === 0 ? '-' : `$${parseFloat(prod[3]).toFixed(2)}`}
+                                                        ${parseFloat(prod[3]).toFixed(2)}
                                                     </Text>
                                                 </View>
                                             ))}
@@ -205,23 +203,18 @@ export default function Ranking({ navigation, route }) {
                                 {/* Summary & CAE */}
                                 <View style={styles.summarySection}>
                                     <View style={styles.financialContainer}>
-                                        
-                                        {selectedItem.tipo !== 'Presu.' && (
-                                            <>
-                                                <View style={styles.financialRow}>
-                                                    <Text variant="bodyMedium" style={styles.financialLabel}>Subtotal:</Text>
-                                                    <Text variant="bodyMedium" style={styles.financialValue}>
-                                                        ${subtotalVal.toFixed(2)}
-                                                    </Text>
-                                                </View>
-                                                <View style={styles.financialRow}>
-                                                    <Text variant="bodyMedium" style={styles.financialLabel}>IVA (21%):</Text>
-                                                    <Text variant="bodyMedium" style={styles.financialValue}>
-                                                        ${ivaVal.toFixed(2)}
-                                                    </Text>
-                                                </View>
-                                            </>
-                                        )}
+                                        <View style={styles.financialRow}>
+                                            <Text variant="bodyMedium" style={styles.financialLabel}>Subtotal:</Text>
+                                            <Text variant="bodyMedium" style={styles.financialValue}>
+                                                ${subtotalVal.toFixed(2)}
+                                            </Text>
+                                        </View>
+                                        <View style={styles.financialRow}>
+                                            <Text variant="bodyMedium" style={styles.financialLabel}>IVA (21%):</Text>
+                                            <Text variant="bodyMedium" style={styles.financialValue}>
+                                                ${ivaVal.toFixed(2)}
+                                            </Text>
+                                        </View>
                                         <Divider style={{ marginVertical: 8, backgroundColor: '#e0e0e0' }} />
                                         <View style={styles.financialRow}>
                                             <Text variant="titleMedium" style={styles.totalLabelText}>TOTAL FINAL:</Text>
