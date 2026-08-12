@@ -45,6 +45,12 @@ export default function Facturacion({ navigation, route }) {
     const [titulo, setTitulo] = useState('');
     const [texto, setTexto] = useState('');
 
+    // States de Edición de Cantidad
+    const [visibleEditCant, setVisibleEditCant] = useState(false);
+    const [editItemIndex, setEditItemIndex] = useState(null);
+    const [editItemCant, setEditItemCant] = useState('');
+    const [editItemName, setEditItemName] = useState('');
+
     // Variables de Impresora
     const BOLD_ON = COMMANDS.TEXT_FORMAT.TXT_BOLD_ON
     const BOLD_OFF = COMMANDS.TEXT_FORMAT.TXT_BOLD_OFF
@@ -69,6 +75,7 @@ export default function Facturacion({ navigation, route }) {
 
     const hideModalImprimir = () => {
         setVisibleImprimir(false);
+        MetodoReiniciar();
     }
 
     const connectPrinter = async () => {
@@ -140,7 +147,7 @@ export default function Facturacion({ navigation, route }) {
     useEffect(() => {
         if (!route.params) return;
 
-        const conIVA = tipo !== '99';
+        const conIVA = tipo != 99;
 
         // Procesar Productos (Venta)
         if (route.params.productos && route.params.productos.length > 0) {
@@ -173,10 +180,10 @@ export default function Facturacion({ navigation, route }) {
                     if (conIVA) {
                         let preciu = (parseFloat(a[2]) / (1 + parseFloat(a[3]) / 100)).toFixed(6)
                         let itemTotal = (parseFloat(preciu) * Number(e[1])).toFixed(2)
-                        arr.push([e[0], e[1], preciu, itemTotal])
+                        arr.push([e[0], e[1], preciu, itemTotal, a[2]])
                     } else {
                         let itemTotal = (parseFloat(a[2]) * Number(e[1])).toFixed(2)
-                        arr.push([e[0], e[1], a[2], itemTotal])
+                        arr.push([e[0], e[1], a[2], itemTotal, a[2]])
                     }
                 }
             })
@@ -187,14 +194,17 @@ export default function Facturacion({ navigation, route }) {
     useEffect(() => {
         let totF = 0.00;
 
-        itemsF.forEach(e => {
-            totF += parseFloat(e[3]);
-        });
-
-        if (tipo !== '99' && totF > 0) {
-            setTotal((totF * 1.21).toFixed(2));
+        if (tipo != 99) {
+            itemsF.forEach(e => {
+                const precioConIVA = parseFloat(e[4] !== undefined ? e[4] : (parseFloat(e[2]) * 1.21));
+                totF += precioConIVA * parseFloat(e[1]);
+            });
+            setTotal(totF.toFixed(2));
         } else {
-            setTotal((totF).toFixed(2));
+            itemsF.forEach(e => {
+                totF += parseFloat(e[3]);
+            });
+            setTotal(totF.toFixed(2));
         }
     }, [itemsF, tipo]);
 
@@ -222,6 +232,20 @@ export default function Facturacion({ navigation, route }) {
         } else {
             setItemsC(prev => prev.filter((_, i) => i !== index));
         }
+    };
+
+    const editarCantidad = (index, nuevaCantidad) => {
+        const cant = parseFloat(nuevaCantidad);
+        if (isNaN(cant) || cant <= 0) return;
+        
+        setItemsF(prev => {
+            const copy = [...prev];
+            const item = copy[index];
+            const unitPrice = parseFloat(item[2]);
+            const nuevoTotal = (unitPrice * cant).toFixed(2);
+            copy[index] = [item[0], cant.toString(), item[2], nuevoTotal, item[4]];
+            return copy;
+        });
     };
 
     const fetchDate = async () => {
@@ -515,15 +539,9 @@ export default function Facturacion({ navigation, route }) {
                             items: itemsF,
                             itemsC: itemsC
                         })
-                        const itemsFConIVA = itemsF.map(e => {
-                            const precioConIVA = (parseFloat(e[2]) * 1.21).toFixed(6);
-                            const totalConIVA = (parseFloat(precioConIVA) * Number(e[1])).toFixed(2);
-                            return [e[0], e[1], precioConIVA, totalConIVA];
-                        });
-                        console.log(itemsFConIVA)
                         if (response.data['error'] == null) {
                             setPreImprimir([tipo, usePtoventa,
-                                String(factura), String(fecha), cliente, itemsFConIVA, total])
+                                String(factura), String(fecha), cliente, itemsF, total])
                             setVisibleImprimir(true)
                             return
                         }
@@ -1064,25 +1082,122 @@ export default function Facturacion({ navigation, route }) {
         );
     }
 
+    const renderModalEditCant = () => {
+        const isValid = editItemCant && editItemCant.trim().length > 0 && !isNaN(parseFloat(editItemCant)) && parseFloat(editItemCant) > 0;
+        
+        const handleConfirm = () => {
+            if (isValid && editItemIndex !== null) {
+                editarCantidad(editItemIndex, editItemCant);
+                setVisibleEditCant(false);
+            }
+        };
+
+        return (
+            <Portal>
+                <Dialog 
+                    visible={visibleEditCant} 
+                    onDismiss={() => setVisibleEditCant(false)} 
+                    style={{ borderRadius: 28, backgroundColor: '#fff', overflow: 'hidden' }}
+                >
+                    {/* Línea decorativa superior */}
+                    <View style={{ backgroundColor: '#663399', height: 6 }} />
+                    
+                    <View style={{ alignItems: 'center', marginTop: 24 }}>
+                        <View style={{ 
+                            backgroundColor: '#f3e5f5', 
+                            width: 72, 
+                            height: 72, 
+                            borderRadius: 36, 
+                            justifyContent: 'center', 
+                            alignItems: 'center' 
+                        }}>
+                            <Icon source="pencil-outline" color="#663399" size={40} />
+                        </View>
+                    </View>
+
+                    <Dialog.Title style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 22, paddingTop: 16 }}>
+                        Modificar Cantidad
+                    </Dialog.Title>
+
+                    <Dialog.Content>
+                        <Text variant="bodyMedium" style={{ textAlign: 'center', color: '#666', marginBottom: 24, paddingHorizontal: 10 }}>
+                            {editItemName}
+                        </Text>
+                        <View style={{ gap: 16 }}>
+                            <TextInput
+                                mode="outlined"
+                                label="Cantidad"
+                                placeholder="Ej: 5"
+                                value={editItemCant}
+                                keyboardType='numeric'
+                                onChangeText={setEditItemCant}
+                                autoFocus={true}
+                                outlineColor="#e0e0e0"
+                                activeOutlineColor="#663399"
+                                left={<TextInput.Icon icon="numeric" color="#663399" />}
+                                style={{ backgroundColor: '#fff' }}
+                            />
+                        </View>
+                    </Dialog.Content>
+
+                    <Dialog.Actions style={{ flexDirection: 'row', paddingHorizontal: 20, paddingBottom: 25, gap: 12 }}>
+                        <Button 
+                            mode="outlined" 
+                            onPress={() => setVisibleEditCant(false)}
+                            style={{ flex: 1, borderRadius: 12, borderColor: '#663399' }}
+                            textColor="#663399"
+                            contentStyle={{ height: 48 }}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button 
+                            mode="contained" 
+                            onPress={handleConfirm}
+                            disabled={!isValid}
+                            style={{ flex: 1, borderRadius: 12, backgroundColor: isValid ? '#663399' : '#e0e0e0' }}
+                            contentStyle={{ height: 48 }}
+                            labelStyle={{ fontSize: 16, fontWeight: 'bold' }}
+                        >
+                            Confirmar
+                        </Button>
+                    </Dialog.Actions>
+                </Dialog>
+            </Portal>
+        );
+    }
+
     const TableItemsF = () => {
         const renderItem = ({ item, index }) => (
-            <TouchableRipple
-                onLongPress={() => BorrarItem(index, '1')}
-                style={styles.itemRowModern}
-                rippleColor="rgba(102, 51, 153, 0.1)"
-            >
+            <View style={styles.itemRowModern}>
                 <View style={styles.itemContentModern}>
-                    <View style={styles.itemQuantityBadge}>
-                        <Text style={styles.itemQuantityText}>{item[1]}</Text>
-                    </View>
-                    <View style={styles.itemDetails}>
-                        <Text style={styles.itemProductoModern} numberOfLines={2}>{item[0]}</Text>
-                    </View>
-                    <View style={styles.itemActions}>
-                        <Icon source="delete-empty-outline" color="#9e9e9e" size={22} />
-                    </View>
+                    <TouchableRipple
+                        onLongPress={() => {
+                            setEditItemIndex(index);
+                            setEditItemCant(item[1].toString());
+                            setEditItemName(item[0]);
+                            setVisibleEditCant(true);
+                        }}
+                        style={{ flex: 1 }}
+                        rippleColor="rgba(102, 51, 153, 0.1)"
+                    >
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <View style={styles.itemQuantityBadge}>
+                                <Text style={styles.itemQuantityText}>{item[1]}</Text>
+                            </View>
+                            <View style={styles.itemDetails}>
+                                <Text style={styles.itemProductoModern} numberOfLines={2}>{item[0]}</Text>
+                            </View>
+                        </View>
+                    </TouchableRipple>
+                    <TouchableRipple 
+                        onPress={() => BorrarItem(index, '1')}
+                        style={styles.itemActions}
+                        rippleColor="rgba(244, 67, 54, 0.2)"
+                    >
+                        <Icon source="delete-empty-outline" color="#F44336" size={22} />
+                    </TouchableRipple>
                 </View>
-            </TouchableRipple>
+            </View>
         );
 
         return (
@@ -1170,6 +1285,7 @@ export default function Facturacion({ navigation, route }) {
             </ScrollView>
             <Alerta></Alerta>
             {renderModalNC()}
+            {renderModalEditCant()}
             <ModalImprimir></ModalImprimir>
         </SafeAreaView>
     )

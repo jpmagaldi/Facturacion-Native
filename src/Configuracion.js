@@ -352,6 +352,11 @@ const handleDuplicado = async (e) => {
 }
 
 const Reimprimir = async (num = null) => {
+    const cleanHyphen = (val) => {
+        if (val === null || val === undefined) return '';
+        const strVal = String(val).trim();
+        return strVal.startsWith('-') ? strVal.slice(1).trim() : strVal;
+    };
     if (await connectPrinter()) {
         try {
             let aux = num || Retext
@@ -364,8 +369,8 @@ const Reimprimir = async (num = null) => {
                 })
                 if (response.data.error !== 'Vacio') {
                     let arrC = response.data[0]
-                    let arrP = response.data[1]
-                    let arrF = response.data[2]
+                    let arrP = response.data[1].map(row => Array.isArray(row) ? row.map(cleanHyphen) : cleanHyphen(row))
+                    let arrF = response.data[2].map(cleanHyphen)
 
                     await Promise.all([
                         asyncPrintText(`${CENTER}${DOUBLE_WIDTH_ON}${DOUBLE_HEIGHT_ON}${BOLD_ON}${'PRESUPUESTO X'}\n${BOLD_OFF}${NORMAL}`, waitTime++),
@@ -409,9 +414,8 @@ const Reimprimir = async (num = null) => {
                 })
                 if (response.data.error !== 'Vacio') {
                     let arrC = response.data[0]
-                    let arrP = response.data[1]
-                    let arrF = response.data[2]
-                
+                    let arrP = response.data[1].map(row => Array.isArray(row) ? row.map(cleanHyphen) : cleanHyphen(row))
+                    let arrF = response.data[2].map(cleanHyphen)
                     let title = ''
                     if (radioSelect === 1) {
                         title = 'Cod. 001 - FACTURA A'
