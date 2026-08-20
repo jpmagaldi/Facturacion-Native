@@ -50,7 +50,7 @@ URL_QR = "https://www.afip.gob.ar/fe/qr/"
 
 
 CUIT = None
-Produccion = True
+Produccion = False
 
 
 class ConnectionManager:
@@ -1061,19 +1061,16 @@ def descontarStock():
 
 
 if __name__ == "__main__":
-	while True:
-		try:
-			print(f"[{datetime.now().strftime('%H:%M:%S')}] Iniciando conexión...")
-			manager.get_db()
-			manager.init_afip()
-			app.run(host='0.0.0.0', port=5001, debug=True) #Para testing
-			#serve(app, host='0.0.0.0', port=5000) #Para produccion
-		except KeyboardInterrupt:
-			print("\nServidor detenido manualmente por el usuario.")
-			break
-		except Exception as e:
-			print(f"[{datetime.now().strftime('%H:%M:%S')}] Error crítico en el servidor: {e}")
-			CrearLogs(e)
-			print("Reiniciando servidor en 5 segundos...")
-			time.sleep(5)
+	#while True:
+	try:
+		print(f"[{datetime.now().strftime('%H:%M:%S')}] Iniciando conexión...")
+		manager.get_db()
+		manager.init_afip()
+		app.run(host='0.0.0.0', port=5001, debug=True) #Para testing
+		#serve(app, host='0.0.0.0', port=5000) #Para produccion
+	except Exception as e:
+		print(f"[{datetime.now().strftime('%H:%M:%S')}] Error crítico en el servidor: {e}")
+		CrearLogs(e)
+		print("Reiniciando servidor en 5 segundos...")
+		time.sleep(5)
 

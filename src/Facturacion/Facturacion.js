@@ -710,10 +710,7 @@ export default function Facturacion({ navigation, route }) {
                     </Button>
                     <Button 
                         mode="outlined" 
-                        onPress={() => {
-                            hideModalImprimir();
-                            MetodoReiniciar();
-                        }}
+                        onPress={hideModalImprimir}
                         style={{ width: '100%', borderRadius: 12, borderColor: '#663399' }}
                         textColor="#663399"
                         contentStyle={{ height: 48 }}
@@ -743,7 +740,7 @@ export default function Facturacion({ navigation, route }) {
     }
     
     const MetodoReiniciar = async () => {
-        hideModalImprimir()
+        setVisibleImprimir(false);
         setLoading(true);
         if (navigation && navigation.setParams) {
             navigation.setParams({ productos: [], cliente: '' , cambios: [], tipo: '' });
